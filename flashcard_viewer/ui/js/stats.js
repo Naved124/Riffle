@@ -112,7 +112,7 @@ export async function renderStats() {
   const st = data.streak;
   const chartHost = h('div');
   const decksWithQuiz = data.decks.filter((d) => d.quizzes > 0);
-  const select = h('md-outlined-select', { label: 'Deck', style: { minWidth: '240px' } },
+  const select = h('md-outlined-select', { label: 'Deck', '.menuPositioning': 'popover', style: { minWidth: '240px' } },
     h('md-select-option', { value: '', '.selected': !chartDeck }, h('div', { slot: 'headline' }, 'All decks')),
     decksWithQuiz.map((d) => h('md-select-option', { value: d.deck_id, '.selected': chartDeck === d.deck_id }, h('div', { slot: 'headline' }, d.title))));
   select.addEventListener('change', () => { chartDeck = select.value; drawChart(); });

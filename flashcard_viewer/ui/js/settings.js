@@ -35,7 +35,7 @@ function slider(get, set, { min, max, step, fmt = (v) => v, live = true }) {
   return h('div.row.gap-s', el, val);
 }
 function select(get, set, options, attrs = {}) {
-  const el = h('md-outlined-select', attrs, options.map(([v, label]) => h('md-select-option', { value: v, '.selected': get() === v }, h('div', { slot: 'headline' }, label))));
+  const el = h('md-outlined-select', Object.assign({ '.menuPositioning': 'popover' }, attrs), options.map(([v, label]) => h('md-select-option', { value: v, '.selected': get() === v }, h('div', { slot: 'headline' }, label))));
   el.addEventListener('change', () => set(el.value));
   return el;
 }
@@ -158,23 +158,64 @@ async function loadSystemFonts() {
   return systemFonts;
 }
 
+// Searchable font picker (a plain dropdown can't cope with hundreds of system fonts).
+const PICKER_LIMIT = 120;
 function fontSelect(get, set, mono) {
-  const bundled = mono ? BUNDLED_MONO : BUNDLED_FONTS;
-  const sys = systemFonts ? (mono ? systemFonts.mono : systemFonts.all).filter((f) => !bundled.includes(f)) : [];
-  const el = h('md-outlined-select', { style: { minWidth: '260px' }, menuPositioning: 'fixed' },
-    bundled.map((f) => h('md-select-option', { value: f, '.selected': get() === f }, h('div', { slot: 'headline', style: { fontFamily: `"${f}"` } }, f), h('div', { slot: 'supporting-text' }, 'Bundled'))),
-    !mono ? null : h('md-select-option', { value: '', '.selected': !get() }, h('div', { slot: 'headline' }, 'System monospace')),
-    sys.length ? h('md-divider') : null,
-    sys.map((f) => h('md-select-option', { value: f, '.selected': get() === f }, h('div', { slot: 'headline', style: { fontFamily: `"${f}"` } }, f))));
-  el.setAttribute('menu-positioning', 'fixed');
-  el.addEventListener('change', () => set(el.value));
-  return el;
+  const label = () => get() || (mono ? 'System monospace' : 'System default');
+  const name = h('span.ff-name', { style: { fontFamily: get() ? `"${get()}"` : '' } }, label());
+  const field = h('button.font-field', { type: 'button', title: 'Choose font' }, name, h('md-icon', 'arrow_drop_down'));
+  field.addEventListener('click', async () => {
+    const fonts = await loadSystemFonts().catch(() => ({ all: [], mono: [] }));
+    const bundled = mono ? BUNDLED_MONO : BUNDLED_FONTS;
+    const system = (mono ? fonts.mono : fonts.all).filter((f) => !bundled.includes(f));
+    let filter = 'all';
+    let query = '';
+    const list = h('div.fp-list', { role: 'listbox' });
+    const count = h('div.body-small.muted.fp-count');
+    const search = h('md-outlined-text-field', { label: `Search ${bundled.length + system.length} fonts`, style: { width: '100%' } });
+    search.append(h('md-icon', { slot: 'leading-icon' }, 'search'));
+    const chips = h('md-chip-set', [['all', 'All'], ['bundled', 'Bundled'], ['system', 'System']].map(([v, l]) => {
+      const c = h('md-filter-chip', { label: l, '.selected': v === 'all' });
+      c.addEventListener('click', () => { filter = v; chips.querySelectorAll('md-filter-chip').forEach((x) => { x.selected = x === c; }); draw(); });
+      return c;
+    }));
+    let dlgRef = null;
+    const choose = (f) => { set(f); name.textContent = f || label(); name.style.fontFamily = f ? `"${f}"` : ''; if (dlgRef) dlgRef.close('picked'); };
+    const item = (f, tag) => h('button.fp-item', {
+      type: 'button', role: 'option', class: f === get() ? 'on' : '', on: { click: () => choose(f) },
+    }, h('span.fp-name', { style: { fontFamily: f ? `"${f}", var(--font)` : '' } }, f || (mono ? 'System monospace' : 'System default')),
+    h('span.fp-sample', { style: { fontFamily: f ? `"${f}", var(--font)` : '' } }, mono ? 'chmod 755 && ls -la' : 'Aa Bb 123'),
+    tag ? h('span.tc-badge', tag) : null, f === get() ? h('md-icon', 'check') : null);
+    const draw = () => {
+      const q = query.trim().toLowerCase();
+      const match = (f) => !q || f.toLowerCase().includes(q);
+      const b = filter === 'system' ? [] : bundled.filter(match);
+      const sys = filter === 'bundled' ? [] : system.filter(match);
+      const shown = sys.slice(0, PICKER_LIMIT);
+      list.replaceChildren(...[
+        mono && filter !== 'system' && !q ? item('', '') : null,
+        ...b.map((f) => item(f, 'Bundled')),
+        b.length && shown.length ? h('div.fp-sep', 'Installed on your system') : null,
+        ...shown.map((f) => item(f, '')),
+        !b.length && !shown.length ? h('div.list-empty.body-medium', 'No fonts match') : null,
+      ].filter(Boolean));
+      count.textContent = sys.length > PICKER_LIMIT ? `Showing ${PICKER_LIMIT} of ${sys.length} system fonts — type to narrow down` : '';
+    };
+    search.addEventListener('input', () => { query = search.value; draw(); });
+    draw();
+    await dialog({
+      headline: mono ? 'Monospace font' : 'Choose a font', icon: 'font_download', wide: true,
+      content: h('div.fp', search, chips, count, list),
+      actions: [{ label: 'Close', value: 'close' }],
+      onOpen: (dlg) => { dlgRef = dlg; setTimeout(() => search.focus(), 150); const on = list.querySelector('.fp-item.on'); if (on) on.scrollIntoView({ block: 'center' }); },
+    });
+  });
+  return field;
 }
 
 function typography() {
   const a = S().appearance;
   const set = (p) => setSettings({ appearance: p });
-  if (!systemFonts) loadSystemFonts().then(() => section === 'typography' && renderSection());
   const headingSel = fontSelect(() => a.headingFont || a.font, (v) => set({ headingFont: v === a.font ? '' : v }), false);
   return [
     ...header('Fonts', 'Bundled Google & open fonts work offline. Your installed system fonts are listed below them.'),

@@ -581,3 +581,27 @@ html.glass .viewer-frame-wrap { box-shadow: 0 0 0 1px color-mix(in srgb, #fff 18
   :root { --sidebar-w: 240px !important; }
   #vt-quiz { --md-filled-tonal-button-leading-space: 12px; --md-filled-tonal-button-trailing-space: 12px; }
 }
+
+/* ---------- font picker ---------- */
+.font-field {
+  display: flex; align-items: center; gap: 8px; min-width: 260px; height: 56px; padding: 0 12px 0 16px; cursor: pointer;
+  border-radius: var(--r-xs); border: 1px solid var(--md-sys-color-outline); background: transparent; color: var(--md-sys-color-on-surface);
+  font-size: 16px; text-align: left; transition: border-color var(--d-short);
+}
+.font-field:hover { border-color: var(--md-sys-color-on-surface); }
+.font-field:focus-visible { outline: 2px solid var(--md-sys-color-primary); outline-offset: -2px; }
+.font-field .ff-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.font-field md-icon { color: var(--md-sys-color-on-surface-variant); }
+.fp { display: flex; flex-direction: column; gap: 12px; }
+.fp-list { display: flex; flex-direction: column; gap: 2px; height: min(38vh, 360px); overflow-y: auto; }
+.fp-count:empty { display: none; }
+.fp-sep { font: 500 12px var(--font); letter-spacing: .5px; text-transform: uppercase; color: var(--md-sys-color-on-surface-variant); padding: 12px 12px 4px; }
+.fp-item {
+  display: flex; align-items: center; gap: 14px; width: 100%; padding: 10px 12px; border: 0; border-radius: var(--r-m); cursor: pointer;
+  background: transparent; color: var(--md-sys-color-on-surface); text-align: left; flex: none;
+}
+.fp-item:hover { background: color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent); }
+.fp-item.on { background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); }
+.fp-item .fp-name { flex: 1; font-size: 17px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fp-item .fp-sample { font-size: 15px; color: var(--md-sys-color-on-surface-variant); white-space: nowrap; }
+.fp-item.on .fp-sample { color: inherit; opacity: .8; }

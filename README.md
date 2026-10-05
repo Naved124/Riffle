@@ -48,7 +48,7 @@ themes, quizzes graded by similarity, and progress tracking.
   - **Catppuccin** (Latte / Frappé / Macchiato / Mocha, 14 accents), **Gruvbox** (soft/medium/hard), **Monokai**, **Monokai Pro**, **Nord**, **Dracula**, **Tokyo Night**, **Rosé Pine** (+ Moon), **Solarized** and **Everforest**
   - **Glass**: frosted translucent panels, which also work as an effect on top of any theme
 - Light / dark / follow system, **AMOLED black**, and standard / medium / high **contrast**.
-- Bundled fonts: Roboto Flex, Roboto, Inter, Outfit, Lexend, Atkinson Hyperlegible, Comic Relief, **Maple Mono**, **Comic Mono**. Any installed **system font** can be used too.
+- Bundled fonts: Roboto Flex, Roboto, Inter, Outfit, Lexend, Atkinson Hyperlegible, Comic Relief, **Maple Mono**, **Comic Mono**. Any installed **system font** can be used too, picked from a searchable font picker with live previews.
 - Settings for corner roundness, interface scale, density, text size, animation speed, reduce motion and ripples.
 - Fully **customisable keyboard shortcuts**, with a cheat sheet (Ctrl+/).
 - **Backup & restore** (settings, favourites, card edits and stats in one zip) and reset options.
