@@ -88,7 +88,7 @@ def run_steps(i=0):
     if st.get("frame_js"):
         frames = ctx.page.mainFrame().children()
         if frames:
-            frames[0].runJavaScript(st["frame_js"], 0, after_js)
+            frames[0].runJavaScript(st["frame_js"], 0, lambda v: (results.__setitem__(f"frame{i}", v), after_js()))
         else:
             print("no child frame", flush=True)
             after_js()
