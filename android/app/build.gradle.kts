@@ -17,12 +17,12 @@ android {
         applicationId = "io.github.naved124.flashcardviewer"
         minSdk = 26          // Android 8.0
         targetSdk = 34
-        versionCode = 5
-        versionName = "1.2.0"
+        versionCode = 6
+        versionName = "1.2.1"
     }
 
     // Release builds are signed with your private key, passed in by CI from repository secrets
-    // (see tools/make-android-key.sh). Without it, build the debug variant instead.
+    // (see tools/make-release-keys.sh). Without it, build the debug variant instead.
     val keystore = System.getenv("ANDROID_KEYSTORE_FILE")
     val haveKey = !keystore.isNullOrBlank() && file(keystore).exists()
     signingConfigs {

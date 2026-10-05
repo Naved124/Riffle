@@ -86,6 +86,43 @@ automatic checks off.
 
 Strictly offline mode turns update checks off.
 
+### Release signing
+
+Every release is signed, so only the owner of the keys can publish an update the apps will install:
+
+- **Windows and Linux.** CI writes `SHA256SUMS` (the checksum of every file in the release) and signs it with a private
+  Ed25519 release key, giving `SHA256SUMS.sig`. The apps have the matching public key built in
+  (`flashcard_viewer/signing.py`). They refuse an update whose signature doesn't verify or whose file doesn't match its
+  signed checksum.
+- **Android.** The APK is signed with a private Android key. Android itself only installs an update signed with the same
+  key as the installed app.
+
+**Setting up the keys (once).** Run `tools/make-release-keys.sh` from the repository root. It needs only `openssl`, and
+uses `keytool` if it's installed. It:
+1. creates both keys in `~/flashcard-viewer-keys/`;
+2. writes the public key into `flashcard_viewer/signing.py` and `packaging/release-signing-key.pem`;
+3. lists the GitHub secrets to add under *Settings → Secrets and variables → Actions*: `RELEASE_SIGNING_KEY`,
+   `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD`. It can
+   upload them with the `gh` CLI.
+
+Add the secrets first, then commit and push the two public-key files. Back up `~/flashcard-viewer-keys/`: if you lose
+those keys, installed apps can't be updated any more.
+
+Without the secrets, CI still builds everything, but the release isn't signed and has no APK. Once a public key is
+committed, CI refuses to publish a release it can't sign.
+
+**Windows publisher name (optional).** The release signature protects updates, but Windows SmartScreen only trusts
+installers signed with a code-signing certificate from a certificate authority. These usually cost money; open-source
+projects can apply for a free one from the SignPath Foundation. If you get one, add it as the `WINDOWS_CERT_PFX_BASE64`
+secret (a base64-encoded `.pfx`) and `WINDOWS_CERT_PASSWORD`, and CI signs `FlashcardViewer.exe` and the installer with it.
+
+### Verifying downloads
+
+```bash
+openssl pkeyutl -verify -pubin -inkey packaging/release-signing-key.pem -rawin -in SHA256SUMS -sigfile SHA256SUMS.sig
+sha256sum --check --ignore-missing SHA256SUMS
+```
+
 ### Android notes
 
 - The Android app has the same interface, quiz, tracker, themes and settings. Phones get a compact layout with a bottom navigation bar.
@@ -96,11 +133,7 @@ Strictly offline mode turns update checks off.
 - **Settings → Backup & reset → Export backup** saves your decks, edits and stats to one `.json` file, which you can restore on another phone.
 - CDN files that decks load (Tailwind, fonts, KaTeX) are cached the first time, so decks also work offline afterwards.
 - **Signing.** Release APKs are signed with a private key that only exists in the repository's GitHub secrets, so nobody
-  else can publish an “update” your phone would accept. To set it up (or for a fork), run `tools/make-android-key.sh`.
-  It creates the key with `keytool` or `openssl` and prints the four secrets to add under *Settings → Secrets and
-  variables → Actions*: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and
-  `ANDROID_KEY_PASSWORD`. Without them CI only makes a debug build, and the release gets no APK.
-  Back the key up: every future update has to be signed with the same key.
+  else can publish an “update” your phone would accept. See [Release signing](#release-signing).
 
 ## Install on Linux
 

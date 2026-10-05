@@ -2,8 +2,12 @@
 
 * Windows (frozen PyInstaller build): download the new ``FlashcardViewer-Setup-<v>.exe`` and run it
   silently; Inno Setup keeps the previous install location and relaunches the app.
-* Linux (``install.sh`` virtual environment): ``pip install --upgrade`` the release's source archive
-  into the running interpreter, then restart.
+* Linux (``install.sh`` virtual environment): ``pip install --upgrade`` the release's wheel into the
+  running interpreter, then restart.
+
+Every release carries SHA256SUMS and SHA256SUMS.sig, an Ed25519 signature made with the project's
+private release key. Once the public key is set in ``signing.py``, an update is only installed when
+that signature is valid and the downloaded file matches its signed checksum.
 * Anything else (running from a source checkout): report the update and link to the release page.
 """
 
@@ -19,10 +23,23 @@ import tempfile
 import urllib.request
 from pathlib import Path
 
+from . import ed25519, signing
+
 REPO = "Naved124/flashcard-viewer"
 API_LATEST = f"https://api.github.com/repos/{REPO}/releases/latest"
 DOWNLOAD_PREFIX = f"https://github.com/{REPO}/releases/download/"
 USER_AGENT = "flashcard-viewer-updater"
+SUMS = "SHA256SUMS"
+WHEEL_RX = re.compile(r"flashcard_viewer-[\w.]+-py3-none-any\.whl")
+INSTALLER_RX = re.compile(r"FlashcardViewer-Setup-[\w.\-]+\.exe")
+
+
+class UpdateError(Exception):
+    pass
+
+
+def signatures_required() -> bool:
+    return bool(signing.RELEASE_PUBLIC_KEY)
 
 
 def parse_version(v: str) -> tuple[int, ...]:
@@ -49,16 +66,22 @@ def install_method() -> str:
     return "none"
 
 
-def pick_asset(release: dict, method: str) -> dict | None:
-    if method != "installer":
-        return None
+def _find(release: dict, match) -> dict | None:
     for a in release.get("assets") or []:
         name = a.get("name", "")
         url = a.get("browser_download_url", "")
-        if re.fullmatch(r"FlashcardViewer-Setup-[\w.\-]+\.exe", name) and url.startswith(DOWNLOAD_PREFIX):
+        if match(name) and url.startswith(DOWNLOAD_PREFIX):
             digest = a.get("digest") or ""
             return {"name": name, "url": url, "size": int(a.get("size") or 0),
                     "sha256": digest[7:] if digest.startswith("sha256:") else ""}
+    return None
+
+
+def pick_asset(release: dict, method: str) -> dict | None:
+    if method == "installer":
+        return _find(release, INSTALLER_RX.fullmatch)
+    if method == "pip":
+        return _find(release, WHEEL_RX.fullmatch)
     return None
 
 
@@ -67,7 +90,18 @@ def summarize(release: dict, current: str, method: str | None = None) -> dict:
     tag = release.get("tag_name") or ""
     latest = tag.lstrip("vV")
     asset = pick_asset(release, method)
-    can_install = (method == "installer" and asset is not None) or (method == "pip" and bool(tag))
+    sums = _find(release, lambda n: n == SUMS)
+    sig = _find(release, lambda n: n == SUMS + ".sig")
+    signed = sums is not None and sig is not None
+    if method == "installer":
+        can_install = asset is not None
+    elif method == "pip":
+        # Older releases have no wheel; their source archive is only acceptable while signing isn't set up.
+        can_install = asset is not None or (bool(tag) and not signatures_required())
+    else:
+        can_install = False
+    if signatures_required() and not signed:
+        can_install = False
     return {
         "state": "checked",
         "current": current,
@@ -79,6 +113,9 @@ def summarize(release: dict, current: str, method: str | None = None) -> dict:
         "asset": asset,
         "method": method,
         "canInstall": can_install,
+        "signed": signed,
+        "sums": sums["url"] if sums else "",
+        "sig": sig["url"] if sig else "",
     }
 
 
@@ -90,6 +127,41 @@ def _open(url: str, timeout: float):
 def fetch_latest(timeout: float = 15) -> dict:
     with _open(API_LATEST, timeout) as r:
         return json.loads(r.read().decode("utf-8"))
+
+
+def _fetch_small(url: str, limit: int = 1 << 20, timeout: float = 15) -> bytes:
+    if not url.startswith(DOWNLOAD_PREFIX):
+        raise UpdateError("refusing to download from an unexpected address")
+    with _open(url, timeout) as r:
+        data = r.read(limit + 1)
+    if len(data) > limit:
+        raise UpdateError("file is unexpectedly large")
+    return data
+
+
+def parse_sums(text: str) -> dict[str, str]:
+    """``sha256sum`` output -> {file name: hex digest}."""
+    out = {}
+    for line in text.splitlines():
+        m = re.fullmatch(r"([0-9a-fA-F]{64})\s+\*?(.+?)\s*", line)
+        if m:
+            out[m.group(2)] = m.group(1).lower()
+    return out
+
+
+def verified_checksum(info: dict, name: str, public_key_hex: str | None = None) -> str:
+    """The SHA-256 of ``name`` from the release's SHA256SUMS, after checking its signature."""
+    key = public_key_hex if public_key_hex is not None else signing.RELEASE_PUBLIC_KEY
+    if not info.get("sums") or not info.get("sig"):
+        raise UpdateError("this release isn't signed, so it won't be installed")
+    data = _fetch_small(info["sums"])
+    sig = _fetch_small(info["sig"], limit=1024)
+    if not ed25519.verify(bytes.fromhex(key), data, sig):
+        raise UpdateError("the release signature is not valid, so it won't be installed")
+    digest = parse_sums(data.decode("utf-8", "replace")).get(name)
+    if not digest:
+        raise UpdateError(f"{name} is not listed in the signed checksums")
+    return digest
 
 
 def download(asset: dict, progress=lambda f: None, timeout: float = 30) -> Path:
@@ -126,10 +198,12 @@ def run_windows_installer(path: Path) -> None:
                      creationflags=flags, close_fds=True)
 
 
-def pip_upgrade(tag: str) -> None:
-    url = f"https://github.com/{REPO}/archive/refs/tags/{tag}.tar.gz"
+def pip_upgrade(source: str) -> None:
+    """Install a downloaded wheel (or, for releases without one, a tag's source archive)."""
+    if not os.path.isfile(source):
+        source = f"https://github.com/{REPO}/archive/refs/tags/{source}.tar.gz"
     proc = subprocess.run([sys.executable, "-m", "pip", "install", "--upgrade", "--quiet",
-                           "--disable-pip-version-check", url],
+                           "--disable-pip-version-check", source],
                           capture_output=True, text=True, timeout=900)
     if proc.returncode != 0:
         tail = (proc.stderr or proc.stdout or "").strip().splitlines()[-3:]

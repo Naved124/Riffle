@@ -415,14 +415,19 @@ class Bridge(QObject):
 
         def work():
             try:
+                asset = info["asset"]
+                if asset and updater.signatures_required():
+                    asset = dict(asset, sha256=updater.verified_checksum(info, asset["name"]))
+                progress = lambda f: self._emit_update(state="progress", progress=f)  # noqa: E731
                 if info["method"] == "installer":
-                    path = updater.download(info["asset"], lambda f: self._emit_update(state="progress", progress=f))
+                    path = updater.download(asset, progress)
                     self._emit_update(state="installing")
                     updater.run_windows_installer(path)
                     QMetaObject.invokeMethod(QCoreApplication.instance(), "quit", Qt.ConnectionType.QueuedConnection)
                 else:
+                    source = str(updater.download(asset, progress)) if asset else info["tag"]
                     self._emit_update(state="progress", progress=-1)
-                    updater.pip_upgrade(info["tag"])
+                    updater.pip_upgrade(source)
                     self._emit_update(state="restart", version=info["latest"])
             except Exception as e:  # noqa: BLE001
                 self._emit_update(state="error", message=f"Update failed: {e}")

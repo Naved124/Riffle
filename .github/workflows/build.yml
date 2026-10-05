@@ -30,9 +30,32 @@ jobs:
           npm install --no-audit --no-fund
           npm test
 
+  linux:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build wheel (what in-app updates install on Linux)
+        run: |
+          pip wheel . --no-deps -w dist
+          pip install --no-deps dist/*.whl
+          python -c "import flashcard_viewer, pathlib; p = pathlib.Path(flashcard_viewer.__file__).parent; assert (p / 'ui/index.html').exists() and (p / 'ui/vendor/material.js').exists()"
+          ls -la dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-linux
+          path: dist/*.whl
+          if-no-files-found: error
+
   windows:
     needs: test
     runs-on: windows-latest
+    env:
+      WIN_PFX: ${{ secrets.WINDOWS_CERT_PFX_BASE64 }}
+      WIN_PFX_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -44,6 +67,20 @@ jobs:
           pip install . pyinstaller
       - name: Freeze with PyInstaller
         run: pyinstaller packaging/windows/flashcard-viewer.spec --noconfirm --distpath dist --workpath build/pyi
+      # Optional Authenticode signing, for when you have a code-signing certificate (.pfx). It shows
+      # your name as the publisher and, with a trusted certificate, stops SmartScreen warnings.
+      # Updates are protected by the release signature below either way.
+      - name: Code-sign the app (optional)
+        if: env.WIN_PFX != ''
+        shell: pwsh
+        run: |
+          $pfx = Join-Path $env:RUNNER_TEMP 'cert.pfx'
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WIN_PFX))
+          $signtool = (Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" | Sort-Object FullName -Descending | Select-Object -First 1).FullName
+          $files = @(Get-ChildItem dist\FlashcardViewer\FlashcardViewer.exe, dist\FlashcardViewer-Setup-*.exe -ErrorAction SilentlyContinue | ForEach-Object FullName)
+          & $signtool sign /f $pfx /p $env:WIN_PFX_PASSWORD /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 $files
+          if ($LASTEXITCODE -ne 0) { throw "signtool failed" }
+          Remove-Item $pfx
       - name: Smoke test
         shell: pwsh
         run: |
@@ -58,6 +95,17 @@ jobs:
           & $iscc "/DAppVersion=$ver" packaging\windows\installer.iss
           if ($LASTEXITCODE -ne 0) { throw "ISCC failed" }
           Get-ChildItem dist\*.exe
+      - name: Code-sign the installer (optional)
+        if: env.WIN_PFX != ''
+        shell: pwsh
+        run: |
+          $pfx = Join-Path $env:RUNNER_TEMP 'cert.pfx'
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WIN_PFX))
+          $signtool = (Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" | Sort-Object FullName -Descending | Select-Object -First 1).FullName
+          $files = @(Get-ChildItem dist\FlashcardViewer\FlashcardViewer.exe, dist\FlashcardViewer-Setup-*.exe -ErrorAction SilentlyContinue | ForEach-Object FullName)
+          & $signtool sign /f $pfx /p $env:WIN_PFX_PASSWORD /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 $files
+          if ($LASTEXITCODE -ne 0) { throw "signtool failed" }
+          Remove-Item $pfx
       - uses: actions/upload-artifact@v4
         with:
           name: release-windows
@@ -109,7 +157,7 @@ jobs:
       - name: Build debug APK (no signing key configured)
         if: env.KS_B64 == ''
         run: |
-          echo "::warning title=Android signing key missing::Run tools/make-android-key.sh and add the ANDROID_* repository secrets. This release will have no APK."
+          echo "::warning title=Android signing key missing::Run tools/make-release-keys.sh and add the repository secrets it lists. This release will have no APK."
           gradle -p android assembleDebug --no-daemon --stacktrace
       - uses: actions/upload-artifact@v4
         if: env.KS_B64 == ''
@@ -122,7 +170,7 @@ jobs:
   # setup.exe and APK are always one click away on the Releases page.
   release:
     if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
-    needs: [windows, android]
+    needs: [linux, windows, android]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -134,6 +182,36 @@ jobs:
           path: artifacts
           pattern: release-*
           merge-multiple: true
+      # SHA256SUMS lists every file; SHA256SUMS.sig is its Ed25519 signature made with the private
+      # release key. The apps only install updates whose signature matches the public key in
+      # flashcard_viewer/signing.py.
+      - name: Sign the release
+        env:
+          RELEASE_SIGNING_KEY: ${{ secrets.RELEASE_SIGNING_KEY }}
+        run: |
+          cd artifacts
+          sha256sum -- * > SHA256SUMS
+          cat SHA256SUMS
+          pub=$(sed -n 's/^RELEASE_PUBLIC_KEY = "\(.*\)"/\1/p' ../flashcard_viewer/signing.py)
+          if [ -z "$RELEASE_SIGNING_KEY" ]; then
+            if [ -n "$pub" ]; then
+              echo "::error title=Release signing key missing::flashcard_viewer/signing.py has a public key but the RELEASE_SIGNING_KEY secret is not set. Installed apps would refuse this release."
+              exit 1
+            fi
+            echo "::warning title=Release not signed::Run tools/make-release-keys.sh to set up release signing."
+            exit 0
+          fi
+          umask 077
+          printf '%s\n' "$RELEASE_SIGNING_KEY" > "$RUNNER_TEMP/release.pem"
+          got=$(openssl pkey -in "$RUNNER_TEMP/release.pem" -pubout -outform DER | tail -c 32 | od -An -tx1 | tr -d ' \n')
+          if [ "$got" != "$pub" ]; then
+            echo "::error title=Release key mismatch::The RELEASE_SIGNING_KEY secret doesn't match the public key in flashcard_viewer/signing.py (expected '$pub', secret gives '$got')."
+            exit 1
+          fi
+          openssl pkeyutl -sign -inkey "$RUNNER_TEMP/release.pem" -rawin -in SHA256SUMS -out SHA256SUMS.sig
+          openssl pkey -in "$RUNNER_TEMP/release.pem" -pubout -out "$RUNNER_TEMP/release.pub"
+          openssl pkeyutl -verify -pubin -inkey "$RUNNER_TEMP/release.pub" -rawin -in SHA256SUMS -sigfile SHA256SUMS.sig
+          rm -f "$RUNNER_TEMP/release.pem"
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.ver.outputs.version }}
@@ -156,3 +234,6 @@ jobs:
             Already installed? The app finds new versions by itself and offers to update (Settings → About).
 
             **Linux:** `git clone` the repo and run `./install.sh` (see README).
+
+            `SHA256SUMS.sig` is an Ed25519 signature of `SHA256SUMS`; check it with the public key in
+            `packaging/release-signing-key.pem` (see README → Verifying downloads).
