@@ -1,7 +1,7 @@
 ; Inno Setup script — builds FlashcardViewer-Setup-<version>.exe from the PyInstaller output.
-;   iscc /DAppVersion=1.1.2 packaging\windows\installer.iss
+;   iscc /DAppVersion=1.2.0 packaging\windows\installer.iss
 #ifndef AppVersion
-  #define AppVersion "1.1.2"
+  #define AppVersion "1.2.0"
 #endif
 #define AppName "Flashcard Viewer"
 #define AppExe "FlashcardViewer.exe"
@@ -61,4 +61,4 @@ Root: HKA; Subkey: "Software\Classes\Applications\{#AppExe}\SupportedTypes"; Val
 Root: HKA; Subkey: "Software\Classes\Applications\{#AppExe}\shell\open\command"; ValueType: string; ValueData: """{app}\{#AppExe}"" ""%1"""; Tasks: openwith
 
 [Run]
-Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall

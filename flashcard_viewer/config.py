@@ -109,6 +109,9 @@ DEFAULTS: dict = {
         "lastDeck": "",
         "confirmDelete": True,
         "singleInstance": True,
+        "checkUpdates": True,        # look for a new release on startup (at most every 6 hours)
+        "lastUpdateCheck": 0,        # epoch ms
+        "skippedVersion": "",
     },
 }
 

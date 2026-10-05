@@ -17,25 +17,21 @@ android {
         applicationId = "io.github.naved124.flashcardviewer"
         minSdk = 26          // Android 8.0
         targetSdk = 34
-        versionCode = 4
-        versionName = "1.1.2"
+        versionCode = 5
+        versionName = "1.2.0"
     }
 
+    // Release builds are signed with your private key, passed in by CI from repository secrets
+    // (see tools/make-android-key.sh). Without it, build the debug variant instead.
+    val keystore = System.getenv("ANDROID_KEYSTORE_FILE")
+    val haveKey = !keystore.isNullOrBlank() && file(keystore).exists()
     signingConfigs {
-        // Use your own key when ANDROID_KEYSTORE_FILE etc. are set (see README); otherwise the
-        // repository's public sideload key, so every build can update the previous one.
-        create("release") {
-            val ks = System.getenv("ANDROID_KEYSTORE_FILE")
-            if (!ks.isNullOrBlank() && file(ks).exists()) {
-                storeFile = file(ks)
+        if (haveKey) {
+            create("release") {
+                storeFile = file(keystore!!)
                 storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
                 keyAlias = System.getenv("ANDROID_KEY_ALIAS")
                 keyPassword = System.getenv("ANDROID_KEY_PASSWORD")
-            } else {
-                storeFile = file("sideload.keystore")
-                storePassword = "flashcardviewer"
-                keyAlias = "sideload"
-                keyPassword = "flashcardviewer"
             }
         }
     }
@@ -43,7 +39,7 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("release")
+            if (haveKey) signingConfig = signingConfigs.getByName("release")
         }
     }
 

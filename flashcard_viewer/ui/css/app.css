@@ -514,6 +514,8 @@ md-dialog [slot="content"] { user-select: text; }
 }
 .ce-row textarea:focus { border: 2px solid var(--md-sys-color-primary); padding: 9px 11px; }
 .ce-head { display: grid; grid-template-columns: 28px 1fr 1fr 40px; gap: 8px; font: 500 12px var(--font); color: var(--md-sys-color-on-surface-variant); position: sticky; top: 0; background: var(--md-sys-color-surface-container-high); padding: 4px 0; z-index: 1; }
+.update-notes { white-space: pre-wrap; max-height: 220px; overflow: auto; padding: 12px 14px; border-radius: 12px;
+  border: 1px solid var(--md-sys-color-outline-variant); color: var(--md-sys-color-on-surface-variant); }
 .info-table { width: 100%; font-size: 14px; border-collapse: collapse; }
 .info-table td { padding: 6px 4px; vertical-align: top; }
 .info-table td:first-child { color: var(--md-sys-color-on-surface-variant); width: 140px; }

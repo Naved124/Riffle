@@ -11,6 +11,7 @@ import {
 import { initQuiz, renderPicker, startQuiz, quizKey, quizActive } from './quiz.js';
 import { renderStats, deckStatsDialog, updateStreakBadge } from './stats.js';
 import { initSettings, openSettings, renderSection, SHORTCUT_LABELS } from './settings.js';
+import { initUpdates } from './update.js';
 
 // ------------------------------------------------------------------ appearance
 function applyAll() {
@@ -282,6 +283,7 @@ async function boot() {
     if (start === 'lastDeck' && init.settings.general.lastDeck && !recovered) openDeck(init.settings.general.lastDeck, { quiet: true });
   }
   requestAnimationFrame(() => document.body.classList.remove('booting'));
+  initUpdates();
 }
 
 boot();

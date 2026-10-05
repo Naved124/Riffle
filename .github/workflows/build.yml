@@ -60,7 +60,7 @@ jobs:
           Get-ChildItem dist\*.exe
       - uses: actions/upload-artifact@v4
         with:
-          name: windows-installer
+          name: release-windows
           path: dist/FlashcardViewer-Setup-*.exe
           if-no-files-found: error
 
@@ -82,7 +82,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.9"
-      - name: Use your own signing key (optional)
+      - name: Signing key from repository secrets
         if: env.KS_B64 != ''
         run: |
           echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/release.keystore"
@@ -90,18 +90,32 @@ jobs:
           echo "ANDROID_KEYSTORE_PASSWORD=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" >> "$GITHUB_ENV"
           echo "ANDROID_KEY_ALIAS=${{ secrets.ANDROID_KEY_ALIAS }}" >> "$GITHUB_ENV"
           echo "ANDROID_KEY_PASSWORD=${{ secrets.ANDROID_KEY_PASSWORD }}" >> "$GITHUB_ENV"
-      - name: Build APK
-        run: gradle -p android assembleRelease --no-daemon --stacktrace
-      - name: Rename
+      - name: Build signed release APK
+        if: env.KS_B64 != ''
         run: |
+          gradle -p android assembleRelease --no-daemon --stacktrace
           ver=$(sed -n 's/^__version__ = "\(.*\)"/\1/p' flashcard_viewer/__init__.py)
           mkdir -p dist
           cp android/app/build/outputs/apk/release/app-release.apk "dist/FlashcardViewer-$ver.apk"
           ls -la dist
       - uses: actions/upload-artifact@v4
+        if: env.KS_B64 != ''
         with:
-          name: android-apk
+          name: release-android
           path: dist/*.apk
+          if-no-files-found: error
+      # Without the secrets (forks, or before the key is set up) only a debug build is made, and the
+      # release gets no APK: a build signed with any other key couldn't update installed apps.
+      - name: Build debug APK (no signing key configured)
+        if: env.KS_B64 == ''
+        run: |
+          echo "::warning title=Android signing key missing::Run tools/make-android-key.sh and add the ANDROID_* repository secrets. This release will have no APK."
+          gradle -p android assembleDebug --no-daemon --stacktrace
+      - uses: actions/upload-artifact@v4
+        if: env.KS_B64 == ''
+        with:
+          name: debug-android
+          path: android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 
   # Publishes (or refreshes) the GitHub Release "v<version>" from main, so the latest
@@ -118,6 +132,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
+          pattern: release-*
           merge-multiple: true
       - uses: softprops/action-gh-release@v2
         with:
@@ -127,10 +142,17 @@ jobs:
           files: artifacts/*
           make_latest: true
           body: |
+            ## What's new
+            ${{ github.event.head_commit.message }}
+
+            <!-- install -->
+            ## Install
             **Windows 10/11:** download `FlashcardViewer-Setup-${{ steps.ver.outputs.version }}.exe` and run it.
             SmartScreen may warn because the installer isn't code-signed: choose *More info → Run anyway*.
 
             **Android 8.0+:** download `FlashcardViewer-${{ steps.ver.outputs.version }}.apk`, allow "Install unknown apps" for your
             browser or file manager, and open it. Keep *Android System WebView* updated from the Play Store.
+
+            Already installed? The app finds new versions by itself and offers to update (Settings → About).
 
             **Linux:** `git clone` the repo and run `./install.sh` (see README).

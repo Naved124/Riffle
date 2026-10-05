@@ -72,6 +72,20 @@ Ready-made builds are attached to each [GitHub release](https://github.com/Naved
 
 Every push to `main` also builds both packages. You can download them from the **Actions** tab, under the run's *Artifacts*.
 
+### Updates
+
+Once installed, you never need to come back here: the app checks the latest GitHub release when it starts (at most
+every 6 hours) and asks before changing anything. **Settings → About** has a *Check now* button and an option to turn
+automatic checks off.
+
+| Platform | What “Update now” does |
+|---|---|
+| Windows | Downloads the new installer, checks its SHA-256, closes the app, updates it in place and reopens it. |
+| Android | Downloads the new APK, checks its SHA-256 and hands it to Android, which asks you to confirm. The first time, Android asks you to allow “Install unknown apps” for Flashcard Viewer. |
+| Linux (`install.sh`) | Upgrades the app inside its virtual environment with pip, then offers to restart. |
+
+Strictly offline mode turns update checks off.
+
 ### Android notes
 
 - The Android app has the same interface, quiz, tracker, themes and settings. Phones get a compact layout with a bottom navigation bar.
@@ -81,10 +95,12 @@ Every push to `main` also builds both packages. You can download them from the *
   - by sharing a file to the app
 - **Settings → Backup & reset → Export backup** saves your decks, edits and stats to one `.json` file, which you can restore on another phone.
 - CDN files that decks load (Tailwind, fonts, KaTeX) are cached the first time, so decks also work offline afterwards.
-- **Signing.** APKs from this repo are signed with a public “sideload” key that is committed in `android/app/sideload.keystore`.
-  That lets every new build install over the previous one. To sign with your own private key instead, add four repository
-  secrets: `ANDROID_KEYSTORE_BASE64` (a base64-encoded keystore), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and
-  `ANDROID_KEY_PASSWORD`. Switching keys requires uninstalling the old app once.
+- **Signing.** Release APKs are signed with a private key that only exists in the repository's GitHub secrets, so nobody
+  else can publish an “update” your phone would accept. To set it up (or for a fork), run `tools/make-android-key.sh`.
+  It creates the key with `keytool` or `openssl` and prints the four secrets to add under *Settings → Secrets and
+  variables → Actions*: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and
+  `ANDROID_KEY_PASSWORD`. Without them CI only makes a debug build, and the release gets no APK.
+  Back the key up: every future update has to be signed with the same key.
 
 ## Install on Linux
 

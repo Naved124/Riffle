@@ -6,10 +6,14 @@ import { extractCards, decodeText, isScriptSource, cardKey } from './extract.js'
 import { buildQuiz, gradeResponse } from './quizcore.js';
 import { Stats } from './statscore.js';
 import { renderDeck } from './render.js';
+import { API_LATEST, summarize } from './updatecore.js';
 
 const EXTRACT_VERSION = 1;
 const DECK_RX = /\.(html?|xhtml|jsx|tsx)$/i;
 const android = () => (typeof window !== 'undefined' && window.AndroidBridge) || null;
+// MainActivity passes a per-install key in the page URL (#k=...). Deck frames can't read it, so
+// they can't use the bridge methods that save files, open links or install updates.
+const KEY = (typeof location !== 'undefined' && (/[#&]k=([\w-]+)/.exec(location.hash) || [])[1]) || '';
 const clone = (o) => JSON.parse(JSON.stringify(o));
 // The Qt bridge takes JSON strings; accept both forms.
 const P = (x) => (typeof x === 'string' ? JSON.parse(x) : x);
@@ -104,7 +108,9 @@ export class JsBackend {
     if (android() && android().pendingImports) {
       try { for (const f of JSON.parse(android().pendingImports() || '[]')) await this.importExternal(f.name, f.text, false); } catch (_) { /* ignore */ }
     }
-    if (android() && android().setNetworkMode) android().setNetworkMode(this.settingsData.network.mode);
+    if (android() && android().setNetworkMode) android().setNetworkMode(KEY, this.settingsData.network.mode);
+    // Download/install progress from MainActivity.
+    window.__fvUpdateEvent = (json) => this.emit('updateStatus', json);
     return this;
   }
 
@@ -190,7 +196,7 @@ export class JsBackend {
   }
 
   async saveFile(name, mime, text) {
-    if (android() && android().saveFile) { android().saveFile(name, mime, text); return name; }
+    if (android() && android().saveFile) { android().saveFile(KEY, name, mime, text); return name; }
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([text], { type: mime }));
     a.download = name;
@@ -216,7 +222,7 @@ export class JsBackend {
     patch = P(patch);
     this.settingsData = deepMerge(this.settingsData, patch);
     lsSet('fv.settings', this.settingsData);
-    if (patch.network && android() && android().setNetworkMode) android().setNetworkMode(this.settingsData.network.mode);
+    if (patch.network && android() && android().setNetworkMode) android().setNetworkMode(KEY, this.settingsData.network.mode);
     return this.settingsData;
   }
 
@@ -396,7 +402,7 @@ export class JsBackend {
     return { files: 0, bytes: 0 };
   }
   async clearCache() {
-    if (android() && android().clearCache) android().clearCache();
+    if (android() && android().clearCache) android().clearCache(KEY);
     return this.cacheInfo();
   }
 
@@ -415,8 +421,29 @@ export class JsBackend {
   }
   openExternal(url) {
     if (!/^(https?:|mailto:)/.test(url)) return;
-    if (android() && android().openExternal) android().openExternal(url);
+    if (android() && android().openExternal) android().openExternal(KEY, url);
     else window.open(url, '_blank', 'noopener');
   }
+  // -- updates (same signal protocol as bridge.py) --
+  checkForUpdate() {
+    const send = (o) => this.emit('updateStatus', JSON.stringify(o));
+    if (this.settingsData.network.mode === 'offline') {
+      send({ state: 'error', message: 'Strictly offline mode is on (Settings → Offline & network).' });
+      return { started: false };
+    }
+    const method = android() && android().installUpdate ? 'apk' : 'none';
+    fetch(API_LATEST, { cache: 'no-store', headers: { Accept: 'application/vnd.github+json' } })
+      .then((r) => { if (!r.ok) throw new Error(`GitHub answered ${r.status}`); return r.json(); })
+      .then((rel) => { this.update = summarize(rel, APP_VERSION, method); send(this.update); })
+      .catch((e) => send({ state: 'error', message: `Couldn't check for updates: ${e.message || e}` }));
+    return { started: true };
+  }
+  installUpdate() {
+    const u = this.update;
+    if (!u || !u.newer || !u.canInstall) return { error: 'no installable update' };
+    android().installUpdate(KEY, u.asset.url, u.asset.sha256 || '', u.asset.size || 0);
+    return { started: true };
+  }
+  restartApp() { location.reload(); }
   setUiZoom(f) { document.documentElement.style.zoom = String(Math.max(0.5, Math.min(2.5, f))); }
 }

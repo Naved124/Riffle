@@ -1,6 +1,7 @@
 // Settings page: appearance, typography, icons, motion, decks, library, network, quiz, shortcuts, window, backup, about.
 import { call, fire } from './api.js';
 import { store, setSettings, emit } from './store.js';
+import { checkForUpdates, promptUpdate, installUpdate, updateInfo, onUpdateInfo } from './update.js';
 import { THEMES, VARIANTS, CATPPUCCIN_ACCENTS, previewColors, catppuccinAccentColor } from './themes.js';
 import { $, $$, h, icon, fmtBytes, snackbar, dialog, confirmDialog, comboFromEvent, prettyCombo } from './util.js';
 
@@ -505,9 +506,45 @@ function backup() {
   ];
 }
 
+function updatesGroup() {
+  const g = S().general;
+  const status = h('div.d', 'Not checked yet');
+  const showInfo = (m) => {
+    if (m.state === 'error') { status.textContent = m.message; return; }
+    if (m.installed) { status.textContent = `Version ${m.latest} is installed. Restart to finish.`; btn.replaceChildren('Restart now'); return; }
+    status.textContent = m.newer ? `Version ${m.latest} is available` : `You're on the latest version (${m.current})`;
+    btn.replaceChildren(m.newer ? (m.canInstall ? 'Update now' : 'Open release page') : 'Check now');
+  };
+  const btn = h('md-filled-tonal-button', {
+    on: {
+      click: async () => {
+        const known = updateInfo();
+        if (known && known.installed) { fire('restartApp'); return; }
+        if (known && known.newer) { installUpdate(known); return; }
+        btn.disabled = true;
+        status.textContent = 'Checking…';
+        const m = await checkForUpdates();
+        btn.disabled = false;
+        if (!btn.isConnected) return;
+        showInfo(m);
+        if (m.state === 'checked' && m.newer) promptUpdate(m);
+      },
+    },
+  }, 'Check now');
+  if (updateInfo()) showInfo(updateInfo());
+  else if (g.lastUpdateCheck) status.textContent = `Last checked ${new Date(g.lastUpdateCheck).toLocaleString()}`;
+  const off = onUpdateInfo((m) => (btn.isConnected ? showInfo(m) : off()));
+  return group(
+    h('div.s-row', icon('system_update'), h('div.s-text', h('div.t', 'Updates'), status), btn),
+    row('autorenew', 'Check for updates automatically', 'When the app starts, at most every 6 hours. Nothing is installed without asking.',
+      sw(() => g.checkUpdates, (v) => setSettings({ general: { checkUpdates: v } }))),
+  );
+}
+
 function about() {
   return [
     ...header('About'),
+    ...(store.platform === 'web' ? [] : [updatesGroup()]),
     h('div.card', h('div.row.gap', h('img', { src: 'icon.svg', width: 64, height: 64 }),
       h('div', h('div.headline-small', 'Flashcard Viewer'), h('div.body-medium.muted', `Version ${store.version} · Material 3 desktop app for HTML flashcard decks`))),
     h('table.info-table', { style: { marginTop: '16px' } },

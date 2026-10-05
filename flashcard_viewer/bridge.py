@@ -8,16 +8,17 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 import time
 import traceback
 import zipfile
 from pathlib import Path
 
-from PyQt6.QtCore import QFile, QObject, QUrl, pyqtSignal, pyqtSlot
+from PyQt6.QtCore import QCoreApplication, QFile, QMetaObject, QObject, Qt, QUrl, pyqtSignal, pyqtSlot
 from PyQt6.QtGui import QDesktopServices, QFontDatabase, QGuiApplication
 from PyQt6.QtWidgets import QFileDialog
 
-from . import __version__, paths
+from . import __version__, paths, updater
 from .config import DEFAULTS, deep_merge
 from .library import DECK_EXTS, deck_id_for
 from .quiz import build_quiz, grade_response
@@ -46,6 +47,7 @@ class Bridge(QObject):
     windowStateChanged = pyqtSignal(str)
     systemThemeChanged = pyqtSignal(str)
     notify = pyqtSignal(str)
+    updateStatus = pyqtSignal(str)  # JSON: {"state": "checked" | "progress" | "installing" | "restart" | "error", ...}
 
     def __init__(self, app_ctx, parent=None):
         super().__init__(parent)
@@ -55,6 +57,8 @@ class Bridge(QObject):
         self.stats = app_ctx.stats
         self.cache = app_ctx.cache
         self._study: dict[str, float] = {}
+        self._update: dict | None = None
+        self._update_busy = False
 
     @property
     def window(self):
@@ -376,6 +380,66 @@ class Bridge(QObject):
         self.cache.clear()
         self.ctx.profile.clearHttpCache()
         return self.cacheInfo()
+
+    # -- updates ----------------------------------------------------------------------
+    # Network work runs on a thread; results arrive through the updateStatus signal.
+    def _emit_update(self, **data) -> None:
+        self.updateStatus.emit(_j(data))
+
+    @pyqtSlot(result=str)
+    @_safe
+    def checkForUpdate(self) -> str:
+        if self.settings.data["network"]["mode"] == "offline":
+            self._emit_update(state="error", message="Strictly offline mode is on (Settings → Offline & network).")
+            return _j({"started": False})
+
+        def work():
+            try:
+                self._update = updater.summarize(updater.fetch_latest(), __version__)
+                self.updateStatus.emit(_j(self._update))
+            except Exception as e:  # noqa: BLE001
+                self._emit_update(state="error", message=f"Couldn't check for updates: {e}")
+
+        threading.Thread(target=work, daemon=True).start()
+        return _j({"started": True})
+
+    @pyqtSlot(result=str)
+    @_safe
+    def installUpdate(self) -> str:
+        info = self._update
+        if not info or not info.get("newer") or not info.get("canInstall"):
+            raise RuntimeError("no installable update")
+        if self._update_busy:
+            return _j({"started": False})
+        self._update_busy = True
+
+        def work():
+            try:
+                if info["method"] == "installer":
+                    path = updater.download(info["asset"], lambda f: self._emit_update(state="progress", progress=f))
+                    self._emit_update(state="installing")
+                    updater.run_windows_installer(path)
+                    QMetaObject.invokeMethod(QCoreApplication.instance(), "quit", Qt.ConnectionType.QueuedConnection)
+                else:
+                    self._emit_update(state="progress", progress=-1)
+                    updater.pip_upgrade(info["tag"])
+                    self._emit_update(state="restart", version=info["latest"])
+            except Exception as e:  # noqa: BLE001
+                self._emit_update(state="error", message=f"Update failed: {e}")
+            finally:
+                self._update_busy = False
+
+        threading.Thread(target=work, daemon=True).start()
+        return _j({"started": True})
+
+    @pyqtSlot()
+    def restartApp(self) -> None:
+        import subprocess
+        kw = {"start_new_session": True} if os.name == "posix" else {"creationflags": 0x00000008}
+        subprocess.Popen(updater.relaunch_command([]), close_fds=True, **kw)  # noqa: S603
+        if self.window:
+            self.window.close()
+        QCoreApplication.quit()
 
     # -- window ---------------------------------------------------------------------
     @pyqtSlot()

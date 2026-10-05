@@ -1,9 +1,15 @@
 package io.github.naved124.flashcardviewer;
 
 import android.app.Activity;
+import android.app.PendingIntent;
 import android.content.ActivityNotFoundException;
+import android.content.BroadcastReceiver;
 import android.content.ClipData;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.SharedPreferences;
+import android.content.pm.PackageInstaller;
 import android.content.pm.ApplicationInfo;
 import android.content.res.Configuration;
 import android.database.Cursor;
@@ -12,6 +18,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.OpenableColumns;
+import android.provider.Settings;
 import android.view.View;
 import android.view.Window;
 import android.webkit.ConsoleMessage;
@@ -42,6 +49,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -57,6 +65,8 @@ import java.util.Map;
 public class MainActivity extends Activity {
     private static final String HOST = "appassets.androidplatform.net";
     private static final String START_URL = "https://" + HOST + "/assets/ui/index.html";
+    private static final String UPDATE_PREFIX = "https://github.com/Naved124/flashcard-viewer/releases/download/";
+    private static final String ACTION_INSTALL_STATUS = "io.github.naved124.flashcardviewer.INSTALL_STATUS";
     private static final int REQ_PICK = 1;
     private static final int REQ_SAVE = 2;
     private static final long MAX_DECK_BYTES = 25L * 1024 * 1024;
@@ -70,6 +80,12 @@ public class MainActivity extends Activity {
     private File cdnDir;
     // Read once on the UI thread: WebView methods throw when called from the network threads.
     private volatile String userAgent = "";
+    // Per-install key handed to the app page in its URL fragment. Deck frames (sandboxed, opaque
+    // origin) can't read it, so they can't call the bridge methods that need it.
+    private String bridgeKey;
+    private String[] pendingUpdate; // url, sha256, size: waiting for "install unknown apps" permission
+    private volatile boolean updateRunning = false;
+    private BroadcastReceiver installReceiver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -81,10 +97,29 @@ public class MainActivity extends Activity {
         if ((getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
             WebView.setWebContentsDebuggingEnabled(true);
         }
+        bridgeKey = loadBridgeKey();
         createWebView();
         handleIntent(getIntent());
         if (savedInstanceState != null) web.restoreState(savedInstanceState);
-        else web.loadUrl(START_URL);
+        else web.loadUrl(START_URL + "#k=" + bridgeKey);
+    }
+
+    private String loadBridgeKey() {
+        SharedPreferences prefs = getSharedPreferences("app", MODE_PRIVATE);
+        String k = prefs.getString("bridgeKey", null);
+        if (k == null) {
+            byte[] b = new byte[24];
+            new SecureRandom().nextBytes(b);
+            StringBuilder sb = new StringBuilder();
+            for (byte x : b) sb.append(String.format("%02x", x));
+            k = sb.toString();
+            prefs.edit().putString("bridgeKey", k).apply();
+        }
+        return k;
+    }
+
+    private boolean keyOk(String key) {
+        return key != null && MessageDigest.isEqual(key.getBytes(StandardCharsets.UTF_8), bridgeKey.getBytes(StandardCharsets.UTF_8));
     }
 
     private void createWebView() {
@@ -140,7 +175,24 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        // Back from the "install unknown apps" screen: carry on with the update if it was allowed.
+        if (pendingUpdate != null && getPackageManager().canRequestPackageInstalls()) {
+            String[] u = pendingUpdate;
+            pendingUpdate = null;
+            startUpdate(u[0], u[1], Long.parseLong(u[2]));
+        }
+    }
+
+    @Override
     protected void onDestroy() {
+        if (installReceiver != null) {
+            try {
+                unregisterReceiver(installReceiver);
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
         if (web != null) {
             web.evaluateJavascript("window.__fvBeforeClose && window.__fvBeforeClose()", null);
             web.destroy();
@@ -305,6 +357,7 @@ public class MainActivity extends Activity {
                 if (HOST.equals(u.getHost())) return serveAsset(u.getPath());
                 if (!"GET".equalsIgnoreCase(request.getMethod()) || request.isForMainFrame()) return null;
                 if (!"http".equals(scheme) && !"https".equals(scheme)) return null;
+                if ("api.github.com".equals(u.getHost())) return null; // update checks must never be served from the cache
                 return serveCached(u.toString());
             } catch (Exception e) {
                 // Never let a bad request take the app down; the WebView falls back to a normal fetch.
@@ -320,7 +373,7 @@ public class MainActivity extends Activity {
             pageReady = false;
             web.destroy();
             createWebView();
-            web.loadUrl(START_URL + "?recovered=1");
+            web.loadUrl(START_URL + "?recovered=1#k=" + bridgeKey);
             Toast.makeText(MainActivity.this, "That deck crashed the viewer and was closed", Toast.LENGTH_LONG).show();
             return true;
         }
@@ -455,17 +508,163 @@ public class MainActivity extends Activity {
         }
     }
 
+    // ------------------------------------------------------------------ in-app updates
+    private void updateEvent(String json) {
+        runOnUiThread(() -> {
+            if (web != null) web.evaluateJavascript("window.__fvUpdateEvent && window.__fvUpdateEvent(" + JSONObject.quote(json) + ")", null);
+        });
+    }
+
+    private void updateEvent(String state, String key, Object value) {
+        try {
+            JSONObject o = new JSONObject().put("state", state);
+            if (key != null) o.put(key, value);
+            updateEvent(o.toString());
+        } catch (JSONException ignored) {
+        }
+    }
+
+    private void startUpdate(String url, String sha256, long size) {
+        if (updateRunning) return;
+        if (!getPackageManager().canRequestPackageInstalls()) {
+            // Android 8+: the user allows this app to install updates once.
+            pendingUpdate = new String[]{url, sha256, String.valueOf(size)};
+            updateEvent("permission", null, null);
+            try {
+                startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + getPackageName())));
+            } catch (RuntimeException e) {
+                pendingUpdate = null;
+                updateEvent("error", "message", "Allow \"Install unknown apps\" for Flashcard Viewer in system settings, then try again.");
+            }
+            return;
+        }
+        updateRunning = true;
+        new Thread(() -> {
+            try {
+                File apk = downloadUpdate(url, sha256, size);
+                installApk(apk);
+            } catch (Exception e) {
+                updateRunning = false;
+                updateEvent("error", "message", "Update failed: " + e.getMessage());
+            }
+        }, "update").start();
+    }
+
+    private File downloadUpdate(String url, String sha256, long size) throws IOException {
+        File out = new File(getCacheDir(), "update.apk");
+        HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
+        try {
+            c.setConnectTimeout(15000);
+            c.setReadTimeout(30000);
+            c.setInstanceFollowRedirects(true);
+            if (c.getResponseCode() >= 400) throw new IOException("server answered " + c.getResponseCode());
+            long total = c.getContentLengthLong() > 0 ? c.getContentLengthLong() : size;
+            MessageDigest md;
+            try {
+                md = MessageDigest.getInstance("SHA-256");
+            } catch (Exception e) {
+                throw new IOException(e);
+            }
+            long done = 0;
+            long lastSent = 0;
+            try (InputStream in = c.getInputStream(); FileOutputStream fo = new FileOutputStream(out)) {
+                byte[] buf = new byte[65536];
+                int n;
+                while ((n = in.read(buf)) > 0) {
+                    fo.write(buf, 0, n);
+                    md.update(buf, 0, n);
+                    done += n;
+                    long now = System.currentTimeMillis();
+                    if (now - lastSent > 150) {
+                        lastSent = now;
+                        updateEvent("progress", "progress", total > 0 ? (double) done / total : -1);
+                    }
+                }
+            }
+            if (size > 0 && done != size) throw new IOException("download incomplete");
+            if (!sha256.isEmpty()) {
+                StringBuilder sb = new StringBuilder();
+                for (byte b : md.digest()) sb.append(String.format("%02x", b));
+                if (!sb.toString().equalsIgnoreCase(sha256)) {
+                    //noinspection ResultOfMethodCallIgnored
+                    out.delete();
+                    throw new IOException("downloaded file failed its checksum");
+                }
+            }
+            updateEvent("progress", "progress", 1.0);
+            return out;
+        } finally {
+            c.disconnect();
+        }
+    }
+
+    private void installApk(File apk) throws IOException {
+        PackageInstaller pi = getPackageManager().getPackageInstaller();
+        PackageInstaller.SessionParams params = new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
+        params.setAppPackageName(getPackageName());
+        int id = pi.createSession(params);
+        try (PackageInstaller.Session session = pi.openSession(id)) {
+            try (OutputStream o = session.openWrite("update.apk", 0, apk.length()); InputStream in = new FileInputStream(apk)) {
+                byte[] buf = new byte[65536];
+                int n;
+                while ((n = in.read(buf)) > 0) o.write(buf, 0, n);
+                session.fsync(o);
+            }
+            registerInstallReceiver();
+            Intent status = new Intent(ACTION_INSTALL_STATUS).setPackage(getPackageName());
+            int flags = PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 31 ? PendingIntent.FLAG_MUTABLE : 0);
+            PendingIntent pending = PendingIntent.getBroadcast(this, id, status, flags);
+            session.commit(pending.getIntentSender());
+        }
+        //noinspection ResultOfMethodCallIgnored
+        apk.delete();
+    }
+
+    private void registerInstallReceiver() {
+        if (installReceiver != null) return;
+        installReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                int status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE);
+                if (status == PackageInstaller.STATUS_PENDING_USER_ACTION) {
+                    Intent confirm = intent.getParcelableExtra(Intent.EXTRA_INTENT);
+                    if (confirm != null) {
+                        updateEvent("confirm", null, null);
+                        startActivity(confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                    }
+                    return;
+                }
+                updateRunning = false;
+                if (status == PackageInstaller.STATUS_SUCCESS) return; // the app restarts as the new version
+                String msg = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE);
+                if (status == PackageInstaller.STATUS_FAILURE_ABORTED) {
+                    updateEvent("error", "message", "Update cancelled.");
+                } else if (status == PackageInstaller.STATUS_FAILURE_CONFLICT || status == PackageInstaller.STATUS_FAILURE_INCOMPATIBLE) {
+                    updateEvent("error", "message", "This update is signed with a different key than the installed app. "
+                            + "Export a backup, uninstall the app and install the new APK from the releases page.");
+                } else {
+                    updateEvent("error", "message", "Update failed" + (msg != null ? ": " + msg : "."));
+                }
+            }
+        };
+        IntentFilter f = new IntentFilter(ACTION_INSTALL_STATUS);
+        if (Build.VERSION.SDK_INT >= 33) registerReceiver(installReceiver, f, Context.RECEIVER_NOT_EXPORTED);
+        else registerReceiver(installReceiver, f);
+    }
+
     // ------------------------------------------------------------------ window.AndroidBridge
     private class Bridge {
         @JavascriptInterface
-        public void openExternal(String url) {
+        public void openExternal(String key, String url) {
+            if (!keyOk(key)) return;
             if (url != null && (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("mailto:"))) {
                 runOnUiThread(() -> MainActivity.this.openExternal(url));
             }
         }
 
         @JavascriptInterface
-        public void saveFile(String name, String mime, String text) {
+        public void saveFile(String key, String name, String mime, String text) {
+            if (!keyOk(key)) return;
             runOnUiThread(() -> {
                 pendingSaveText = text;
                 Intent i = new Intent(Intent.ACTION_CREATE_DOCUMENT);
@@ -481,8 +680,8 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
-        public void setNetworkMode(String mode) {
-            if (mode != null) networkMode = mode;
+        public void setNetworkMode(String key, String mode) {
+            if (keyOk(key) && mode != null) networkMode = mode;
         }
 
         @JavascriptInterface
@@ -502,7 +701,8 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
-        public void clearCache() {
+        public void clearCache(String key) {
+            if (!keyOk(key)) return;
             File[] list = cdnDir.listFiles();
             if (list != null) for (File f : list) //noinspection ResultOfMethodCallIgnored
                 f.delete();
@@ -543,6 +743,12 @@ public class MainActivity extends Activity {
                 }
                 decor.setSystemUiVisibility(flags);
             });
+        }
+
+        @JavascriptInterface
+        public void installUpdate(String key, String url, String sha256, double size) {
+            if (!keyOk(key) || url == null || !url.startsWith(UPDATE_PREFIX) || !url.endsWith(".apk")) return;
+            runOnUiThread(() -> startUpdate(url, sha256 == null ? "" : sha256, (long) size));
         }
 
         @JavascriptInterface
