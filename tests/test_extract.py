@@ -16,6 +16,7 @@ EXPECTED = {
     "09-pomodoro-no-cards.html": (0, None),
     "10-日本語-kana.HTM": (10, ("ふ", "fu (hu)")),
     "11-docker-mcq-quiz.html": (5, ("What file is used to define multi-container applications?", "docker-compose.yml")),
+    "12-git-tuple-rows.html": (6, ("Which command stages file.txt?", "git add file.txt")),
 }
 
 
@@ -118,3 +119,18 @@ def test_generic_two_field_schema():
     html = "<script>const words = [{fr: 'chat', en: 'cat'}, {fr: 'chien', en: 'dog'}, {fr: 'oiseau', en: 'bird'}];</script>"
     cards = extract_cards(html, "x.html").cards
     assert [(c.front, c.back) for c in cards] == [("chat", "cat"), ("chien", "dog"), ("oiseau", "bird")]
+
+
+def test_tuple_rows_use_topic_and_note_columns(samples):
+    cards = extract_cards((samples / "12-git-tuple-rows.html").read_text(encoding="utf-8")).cards
+    by_front = {c.front: c for c in cards}
+    c = by_front["Create and switch to a branch called dev?"]
+    assert c.category == "Branches"
+    assert c.explanation == "Older form: git checkout -b dev"
+    assert by_front["Which command stages file.txt?"].explanation == ""
+
+
+def test_tuple_rows_need_varied_columns():
+    # Config-like rows where no two columns vary are not a deck.
+    src = '<script>const SIZES = [["sm", "small"], ["sm", "small"], ["sm", "small"]];</script>'
+    assert extract_cards(src).cards == []

@@ -74,10 +74,16 @@
     let budget = 4000;
     while ((n = walker.nextNode()) && budget-- > 0) {
       const p = n.parentElement;
-      if (!p || ['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE'].includes(p.tagName)) continue;
-      const text = (p.textContent || '').trim();
-      if (text.length > 40 || text.length < 3) continue;
-      const m = RX.exec(text);
+      const own = (n.nodeValue || '').trim();
+      if (!own || !p || ['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE'].includes(p.tagName)) continue;
+      // Prefer the text node itself ("3 / 12" in its own span), so neighbouring counters don't run
+      // together ("3 / 12" + "1 known" -> "3 / 121"); fall back to the parent for "Card <b>3</b> of 12".
+      let m = own.length <= 40 ? RX.exec(own) : null;
+      if (!m) {
+        const text = (p.textContent || '').trim();
+        if (text.length > 40 || text.length < 3) continue;
+        m = RX.exec(text);
+      }
       if (!m) continue;
       const cur = +m[1], total = +m[2];
       if (cur < 1 || total < 2 || cur > total || total > 2000) continue;

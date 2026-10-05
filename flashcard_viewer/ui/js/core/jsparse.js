@@ -229,7 +229,8 @@ export function parseLiteralAt(src, pos) {
   return [v, p.i];
 }
 
-const ARRAY_OF_OBJECTS = /\[\s*(?:\/\/[^\n]*\n\s*|\/\*[\s\S]*?\*\/\s*)*\{/g;
+// An array of objects, or an array of string rows like [["Topic", "question", "answer"], ...]
+const ARRAY_OF_OBJECTS = /\[\s*(?:\/\/[^\n]*\n\s*|\/\*[\s\S]*?\*\/\s*)*(?:\{|\[\s*['"`])/g;
 const LABEL = /([A-Za-z_$][\w$]*|['"][^'"]+['"])\s*(?::\s*[\w<>[\]\s|]*?)?\s*[:=]\s*(?:Object\.freeze\(\s*)?$/;
 
 /** Yield [value, start, end, label] for each top-level array literal of objects. Objects are Maps. */

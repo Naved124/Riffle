@@ -17,8 +17,8 @@ android {
         applicationId = "io.github.naved124.flashcardviewer"
         minSdk = 26          // Android 8.0
         targetSdk = 34
-        versionCode = 3
-        versionName = "1.1.1"
+        versionCode = 4
+        versionName = "1.1.2"
     }
 
     signingConfigs {

@@ -21,6 +21,7 @@ const EXPECTED = {
   '09-pomodoro-no-cards.html': [0, null],
   '10-日本語-kana.HTM': [10, ['ふ', 'fu (hu)']],
   '11-docker-mcq-quiz.html': [5, ['What file is used to define multi-container applications?', 'docker-compose.yml']],
+  '12-git-tuple-rows.html': [6, ['Which command stages file.txt?', 'git add file.txt']],
 };
 
 for (const [name, [count, pair]] of Object.entries(EXPECTED)) {
@@ -51,4 +52,13 @@ test('categories from object keys and hints', () => {
   const b = extractCards(readFileSync(join(SAMPLES, '02-biology-js-array.html'), 'utf8'), '02.html');
   assert.equal(b.cards[0].hint, 'It makes ATP');
   assert.equal(b.cards[6].front, 'What is a codon?');
+});
+
+test('tuple rows use topic and note columns', () => {
+  const text = decodeText(readFileSync(join(SAMPLES, '12-git-tuple-rows.html')));
+  const { cards } = extractCards(text, '12-git-tuple-rows.html');
+  const c = cards.find((x) => x.front === 'Create and switch to a branch called dev?');
+  assert.equal(c.category, 'Branches');
+  assert.equal(c.explanation, 'Older form: git checkout -b dev');
+  assert.equal(cards.find((x) => x.front === 'Which command stages file.txt?').explanation, '');
 });

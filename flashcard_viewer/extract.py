@@ -240,8 +240,45 @@ def _content_keys(dicts: list[dict]) -> list[str] | None:
     return keys[:2]
 
 
+def _cards_from_rows(rows: list, category: str) -> list[Card] | None:
+    """Rows like ["Topic", "question", "answer", "note"]: arrays of strings with the same length.
+    A short leading column whose values repeat is the category; the next two filled columns are
+    front and back, and a further column becomes the explanation."""
+    if len(rows) < 2 or not all(isinstance(r, list) for r in rows):
+        return None
+    width = len(rows[0])
+    if width < 2 or width > 8 or any(len(r) != width for r in rows):
+        return None
+    if not all(isinstance(v, str) or v is None for r in rows for v in r):
+        return None
+    cols = [[_as_text(r[i]) for r in rows] for i in range(width)]
+    filled = [i for i in range(width) if all(cols[i])]
+    cat_col = None
+    if (width >= 3 and 0 in filled and len(set(cols[0])) < len(rows)
+            and all(len(v) <= 40 for v in cols[0]) and len(filled) >= 3):
+        cat_col = 0
+    content = [i for i in filled if i != cat_col]
+    if len(content) < 2:
+        return None
+    front, back = content[0], content[1]
+    # Config-like data (["sm", "small"] repeated) is not a deck.
+    if len(set(cols[front])) < max(2, len(rows) // 2):
+        return None
+    extra = next((i for i in range(width) if i not in (cat_col, front, back) and any(cols[i])), None)
+    cards = []
+    for n in range(len(rows)):
+        cat = cols[cat_col][n] if cat_col is not None else category
+        cards.append(Card(cols[front][n], cols[back][n], explanation=(cols[extra][n] or "") if extra is not None else "",
+                          category=cat or "", source="script"))
+    return cards
+
+
 def _walk(value, category: str, out: list[Card]) -> None:
     if isinstance(value, list):
+        rows = _cards_from_rows(value, category)
+        if rows:
+            out.extend(rows)
+            return
         dicts = [v for v in value if isinstance(v, dict)]
         shared = _content_keys(dicts)
         for v in value:

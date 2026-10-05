@@ -141,8 +141,37 @@ function contentKeys(dicts) {
   return keys.slice(0, 2);
 }
 
+// Rows like ["Topic", "question", "answer", "note"]: arrays of strings with the same length.
+// A short leading column whose values repeat is the category; the next two filled columns are
+// front and back, and a further column becomes the explanation.
+function cardsFromRows(rows, category) {
+  if (rows.length < 2 || !rows.every(Array.isArray)) return null;
+  const width = rows[0].length;
+  if (width < 2 || width > 8 || rows.some((r) => r.length !== width)) return null;
+  if (!rows.every((r) => r.every((v) => typeof v === 'string' || v == null))) return null;
+  const cols = [];
+  for (let i = 0; i < width; i++) cols.push(rows.map((r) => asText(r[i])));
+  const range = [...Array(width).keys()];
+  const filled = range.filter((i) => cols[i].every(Boolean));
+  let catCol = null;
+  if (width >= 3 && filled.includes(0) && new Set(cols[0]).size < rows.length
+      && cols[0].every((v) => v.length <= 40) && filled.length >= 3) catCol = 0;
+  const content = filled.filter((i) => i !== catCol);
+  if (content.length < 2) return null;
+  const [front, back] = content;
+  // Config-like data (["sm", "small"] repeated) is not a deck.
+  if (new Set(cols[front]).size < Math.max(2, Math.floor(rows.length / 2))) return null;
+  const extra = range.find((i) => i !== catCol && i !== front && i !== back && cols[i].some(Boolean));
+  return rows.map((_, n) => makeCard(cols[front][n], cols[back][n], {
+    explanation: extra !== undefined ? cols[extra][n] || '' : '',
+    category: (catCol !== null ? cols[catCol][n] : category) || '', source: 'script',
+  }));
+}
+
 function walk(value, category, out) {
   if (Array.isArray(value)) {
+    const rows = cardsFromRows(value, category);
+    if (rows) { out.push(...rows); return; }
     const dicts = value.filter(isMap);
     const shared = contentKeys(dicts);
     for (const v of value) {

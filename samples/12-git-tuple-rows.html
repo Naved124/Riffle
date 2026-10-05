@@ -1,0 +1,43 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<title>Git Basics</title>
+<!-- Edge cases: cards as tuple rows [topic, question, answer, note], a web font from a CDN,
+     and a "1 / 6" counter sitting right next to a "0 known" score. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap">
+<style>
+body{font-family:Inter,system-ui,sans-serif;background:#f4f5f7;margin:0;padding:24px}
+.status{display:flex;justify-content:space-between;font:12px monospace;color:#555}
+.card{background:#fff;border-radius:12px;padding:24px;min-height:160px;cursor:pointer;margin:12px 0}
+.a,.note{display:none}.card.flipped .a,.card.flipped .note{display:block}
+.note{font:12px monospace;color:#666;white-space:pre-wrap}
+</style></head><body>
+<div>
+  <div class="status"><span id="pos">1 / 6</span><span id="score">0 known</span></div>
+</div>
+<div class="card" id="card"><p class="q" id="q"></p><p class="a" id="a"></p><pre class="note" id="note"></pre></div>
+<button id="got">Got it</button> <button id="next">Next</button>
+<script>
+const CARDS = [
+ ["Basics","Which command stages <code>file.txt</code>?","<code>git add file.txt</code>",""],
+ ["Basics","Which command shows staged and unstaged changes?","<code>git status</code>","Add -s for the short format."],
+ ["Branches","Create and switch to a branch called <code>dev</code>?","<code>git switch -c dev</code>","Older form: git checkout -b dev"],
+ ["Branches","Delete a merged local branch <code>dev</code>?","<code>git branch -d dev</code>","-D forces deletion of an unmerged branch."],
+ ["History","Show history as one line per commit?","<code>git log --oneline</code>",""],
+ ["History","Undo the last commit but keep its changes staged?","<code>git reset --soft HEAD~1</code>","--mixed (the default) unstages them too."]
+];
+const $ = id => document.getElementById(id);
+let i = 0, known = 0;
+function render(){
+  const c = CARDS[i];
+  $("card").classList.remove("flipped");
+  $("pos").textContent = `${i + 1} / ${CARDS.length}`;
+  $("score").textContent = `${known} known`;
+  $("q").innerHTML = c[1]; $("a").innerHTML = c[2]; $("note").textContent = c[3];
+}
+$("card").onclick = () => $("card").classList.toggle("flipped");
+$("next").onclick = () => { i = (i + 1) % CARDS.length; render(); };
+$("got").onclick = () => { known++; i = (i + 1) % CARDS.length; render(); };
+render();
+</script>
+</body></html>

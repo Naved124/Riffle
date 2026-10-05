@@ -1,7 +1,7 @@
 ; Inno Setup script — builds FlashcardViewer-Setup-<version>.exe from the PyInstaller output.
-;   iscc /DAppVersion=1.1.1 packaging\windows\installer.iss
+;   iscc /DAppVersion=1.1.2 packaging\windows\installer.iss
 #ifndef AppVersion
-  #define AppVersion "1.1.1"
+  #define AppVersion "1.1.2"
 #endif
 #define AppName "Flashcard Viewer"
 #define AppExe "FlashcardViewer.exe"

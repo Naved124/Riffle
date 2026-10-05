@@ -312,12 +312,13 @@ def parse_literal_at(src: str, pos: int):
     return v, p.i
 
 
-_ARRAY_OF_OBJECTS = re.compile(r"\[\s*(?://[^\n]*\n\s*|/\*.*?\*/\s*)*\{", re.S)
+# An array of objects, or an array of string rows like [["Topic", "question", "answer"], ...]
+_ARRAY_OF_OBJECTS = re.compile(r"\[\s*(?://[^\n]*\n\s*|/\*.*?\*/\s*)*(?:\{|\[\s*['\"`])", re.S)
 
 
 def find_literal_arrays(src: str):
     """Yield ``(value, start, end, label)`` for every top-level array literal of
-    objects in ``src``. ``label`` is the name it is assigned to or the object
+    objects (or string rows) in ``src``. ``label`` is the name it is assigned to or the object
     key it sits under (e.g. ``animals`` in ``{animals: [...]}``), if any."""
     pos = 0
     while True:
