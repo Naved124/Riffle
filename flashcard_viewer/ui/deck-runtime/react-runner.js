@@ -193,8 +193,13 @@
   }
 
   try {
-    const res = await fetch(src);
-    const code = await res.text();
+    let code;
+    if (me.dataset.b64) {
+      const bin = atob(me.dataset.b64);
+      code = new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)));
+    } else {
+      code = await (await fetch(src)).text();
+    }
     const ts = /\.tsx?$/i.test(name);
     const presets = [];
     if (ts) presets.push(['typescript', { isTSX: true, allExtensions: true }]);

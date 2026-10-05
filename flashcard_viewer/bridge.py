@@ -75,6 +75,7 @@ class Bridge(QObject):
             "configDir": str(paths.config_dir()),
             "pendingOpen": self.ctx.take_pending_open(),
             "maximized": self.window.isMaximized() if self.window else False,
+            "platform": "desktop",
         })
 
     @pyqtSlot(str, result=str)

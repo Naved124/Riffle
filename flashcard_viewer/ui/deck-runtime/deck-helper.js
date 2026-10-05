@@ -6,6 +6,9 @@
 (function () {
   if (window.__fvHelper || window.parent === window) return;
   window.__fvHelper = true;
+  // Where vendor assets live: /__fv/vendor/ (desktop) or ../vendor/ next to deck-runtime/ (Android / web).
+  const selfSrc = (document.currentScript && document.currentScript.src) || '/__fv/deck-helper.js';
+  const VENDOR = /\/deck-runtime\//.test(selfSrc) ? new URL('../vendor/', selfSrc).href : new URL('vendor/', selfSrc).href;
 
   const send = (type, data) => {
     try { window.parent.postMessage(Object.assign({ fv: type }, data || {}), '*'); } catch (_) { /* ignore */ }
@@ -34,6 +37,17 @@
       send('shortcut', { combo });
     }
   }, true);
+
+  // ---- web links open in the system browser, not inside the deck frame ----
+  document.addEventListener('click', (e) => {
+    const a = e.target && e.target.closest && e.target.closest('a[href]');
+    if (!a || e.defaultPrevented) return;
+    const href = a.getAttribute('href') || '';
+    if (/^(https?:|mailto:)/i.test(href)) {
+      e.preventDefault();
+      send('open-link', { url: a.href });
+    }
+  });
 
   // ---- drag & drop: let the shell show its drop overlay ----
   window.addEventListener('dragenter', (e) => {
@@ -124,7 +138,7 @@
     if (config.font) {
       if (!document.getElementById('__fv-fonts')) {
         const link = document.createElement('link');
-        link.id = '__fv-fonts'; link.rel = 'stylesheet'; link.href = '/__fv/vendor/fonts.css';
+        link.id = '__fv-fonts'; link.rel = 'stylesheet'; link.href = VENDOR + 'fonts.css';
         (document.head || document.documentElement).appendChild(link);
       }
       css += `body, body :not(code):not(pre):not(kbd):not(samp):not(.katex):not(.katex *):not([class*="icon"]):not([class*="material"]):not(svg):not(svg *) { font-family: "${config.font}", system-ui, sans-serif !important; }\n`;

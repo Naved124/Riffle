@@ -178,8 +178,9 @@ export function pushDeckConfig() {
 
 export async function openDeck(id, { quiet = false } = {}) {
   if (!id) return;
-  if (store.current && store.current.id === id && frame().src) {
+  if (store.current && store.current.id === id && lastSource) {
     selectedId = id;
+    document.body.classList.add('deck-open');
     renderList();
     return;
   }
@@ -194,7 +195,8 @@ export async function openDeck(id, { quiet = false } = {}) {
   frameReady = false;
   $('#frame-wrap').classList.remove('empty');
   $('#frame-loading').classList.remove('hidden');
-  frame().src = res.url;
+  document.body.classList.add('deck-open');
+  setFrameSource(res);
   renderToolbar();
   renderList();
   const el = $(`.deck-item[data-id="${id}"]`);
@@ -202,10 +204,31 @@ export async function openDeck(id, { quiet = false } = {}) {
   emit('deck-opened');
 }
 
-export function reloadDeck() {
+let lastSource = null;
+// Desktop serves decks from deck://<id>/ (own origin); Android/web hands over the HTML as a sandboxed srcdoc.
+function setFrameSource(res) {
+  lastSource = res;
+  const f = frame();
+  if (res.srcdoc != null) {
+    f.setAttribute('sandbox', 'allow-scripts allow-forms allow-modals allow-popups allow-downloads');
+    f.removeAttribute('src');
+    f.srcdoc = res.srcdoc;
+  } else {
+    f.removeAttribute('sandbox');
+    f.removeAttribute('srcdoc');
+    f.src = res.url;
+  }
+}
+
+export async function reloadDeck() {
   if (!store.current) return;
   frameReady = false;
   $('#frame-loading').classList.remove('hidden');
+  if (lastSource && lastSource.srcdoc != null) {
+    const res = await call('openDeck', store.current.id);
+    if (res) setFrameSource(res);
+    return;
+  }
   const src = frame().src;
   frame().src = 'about:blank';
   setTimeout(() => { frame().src = src; }, 30);
@@ -283,6 +306,9 @@ function onFrameMessage(e) {
       break;
     case 'dragenter':
       emit({ type: 'dragenter' });
+      break;
+    case 'open-link':
+      fire('openExternal', String(d.url || ''));
       break;
     default:
   }
@@ -368,12 +394,24 @@ async function deleteDeck() {
   snackbar('Deck removed');
 }
 
+/** Phone layout: leave the full-screen viewer and show the deck list (deck stays loaded). */
+export function showDeckList() {
+  if (!document.body.classList.contains('deck-open')) return false;
+  flushStudy();
+  dismissQuizPrompt();
+  document.body.classList.remove('deck-open');
+  return true;
+}
+
 export function closeDeck() {
+  document.body.classList.remove('deck-open');
   flushStudy();
   store.current = null;
   selectedId = null;
   study.deckId = null;
+  frame().removeAttribute('srcdoc');
   frame().src = 'about:blank';
+  lastSource = null;
   $('#frame-wrap').classList.add('empty');
   lastProgress = null;
   renderToolbar();
@@ -425,6 +463,12 @@ export function initLibrary() {
   $('#btn-focus-exit').addEventListener('click', () => emit({ type: 'toggle-focus' }));
   $('#vt-more').addEventListener('click', () => { $('#menu-more').open = !$('#menu-more').open; });
   $('#mi-rename').addEventListener('click', renameDeck);
+  $('#vt-back').addEventListener('click', showDeckList);
+  $('#mi-cards').addEventListener('click', editCards);
+  $('#mi-reload').addEventListener('click', reloadDeck);
+  $('#mi-zoom-in').addEventListener('click', () => setDeckZoom(store.settings.decks.zoom + 0.1));
+  $('#mi-zoom-out').addEventListener('click', () => setDeckZoom(store.settings.decks.zoom - 0.1));
+  $('#mi-fullscreen').addEventListener('click', () => emit({ type: 'toggle-focus' }));
   $('#mi-reveal').addEventListener('click', () => store.current && call('revealDeck', store.current.id));
   $('#mi-info').addEventListener('click', deckInfo);
   $('#mi-delete').addEventListener('click', deleteDeck);

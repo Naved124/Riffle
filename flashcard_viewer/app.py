@@ -24,7 +24,17 @@ from .schemes import (UI_DIR, AppSchemeHandler, CdnCache, CdnSchemeHandler, Deck
                       register_schemes)
 from .stats import Stats
 
-SERVER_NAME = f"flashcard-viewer-{os.getuid() if hasattr(os, 'getuid') else 'user'}"
+def _user_tag() -> str:
+    if hasattr(os, "getuid"):
+        return str(os.getuid())
+    import getpass
+    try:
+        return "".join(c for c in getpass.getuser() if c.isalnum()) or "user"
+    except Exception:  # noqa: BLE001
+        return "user"
+
+
+SERVER_NAME = f"flashcard-viewer-{_user_tag()}"
 ICON_PATH = UI_DIR / "icon.svg"
 
 

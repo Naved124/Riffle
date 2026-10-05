@@ -6,7 +6,7 @@ import { applyTheme } from './themes.js';
 import { $, $$, h, snackbar, dialog, comboFromEvent, prettyCombo } from './util.js';
 import {
   initLibrary, refreshDecks, renderList, openDeck, reloadDeck, setDeckZoom, pushDeckConfig, onDeckFileChanged, editCards,
-  visibleDecks, toggleFav, markActivity, dismissQuizPrompt,
+  visibleDecks, toggleFav, markActivity, dismissQuizPrompt, showDeckList,
 } from './library.js';
 import { initQuiz, renderPicker, startQuiz, quizKey, quizActive } from './quiz.js';
 import { renderStats, deckStatsDialog, updateStreakBadge } from './stats.js';
@@ -24,6 +24,10 @@ function applyAll() {
   b.classList.toggle('sidebar-collapsed', !!s.window.sidebarCollapsed);
   b.classList.toggle('native-titlebar', !s.window.customTitlebar);
   $('#btn-mode md-icon').textContent = r.dark ? 'light_mode' : 'dark_mode';
+  const bar = getComputedStyle(document.documentElement).getPropertyValue('--md-sys-color-surface-container').trim();
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta && bar) meta.content = bar;
+  if (window.AndroidBridge && window.AndroidBridge.setSystemBars && bar) window.AndroidBridge.setSystemBars(bar, r.dark);
   pushDeckConfig();
 }
 
@@ -38,6 +42,7 @@ function goto(page, { silent = false } = {}) {
   if (!pageRenderers[page]) return;
   if (store.page === 'library' && page !== 'library') markActivity();
   store.page = page;
+  document.body.dataset.page = page;
   $$('.rail-item').forEach((b) => b.classList.toggle('active', b.dataset.page === page));
   $$('.page').forEach((p) => p.classList.toggle('active', p.id === 'page-' + page));
   if (!silent) pageRenderers[page]();
@@ -217,6 +222,20 @@ subscribe(async (ev) => {
   }
 });
 
+// ------------------------------------------------------------------ Android back button
+// Returns true when the app handled it (otherwise the activity closes).
+window.__fvBack = () => {
+  const dlg = document.querySelector('md-dialog[open]');
+  if (dlg) { dlg.close('cancel'); return true; }
+  const menu = document.querySelector('md-menu[open]');
+  if (menu) { menu.open = false; return true; }
+  if (document.body.classList.contains('focus')) { toggleFocus(); return true; }
+  if (store.page === 'quiz' && quizActive()) { quizKey(new KeyboardEvent('keydown', { key: 'Escape' })); return true; }
+  if (store.page === 'library' && showDeckList()) { renderList(); return true; }
+  if (store.page !== 'library') { goto('library'); return true; }
+  return false;
+};
+
 // ------------------------------------------------------------------ boot
 async function boot() {
   try {
@@ -229,8 +248,10 @@ async function boot() {
   const init = await call('getInitialState');
   Object.assign(store, {
     settings: init.settings, defaults: init.defaults, systemScheme: init.systemScheme, version: init.version,
-    dataDir: init.dataDir, configDir: init.configDir,
+    dataDir: init.dataDir, configDir: init.configDir, platform: init.platform || 'desktop',
   });
+  document.body.classList.add('platform-' + store.platform);
+  if (store.platform !== 'desktop') store.settings.window.customTitlebar = false;
   applyAll();
   setWindowState(init.maximized ? 'maximized' : 'normal');
   initChrome();

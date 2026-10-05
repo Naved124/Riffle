@@ -277,7 +277,26 @@ function decks() {
   ];
 }
 
+function mobileLibrary() {
+  const l = S().library;
+  const set = (p) => setSettings({ library: p });
+  return [
+    ...header('Library', 'Decks you add are stored inside the app, so they work offline. Add them with the + button, or share / open an .html file with Flashcard Viewer from any other app.'),
+    group(
+      row('style', 'Decks in your library', null, h('span.title-medium', String(store.decks.length))),
+      h('div.s-row', h('md-filled-tonal-button', { on: { click: () => emit({ type: 'add-files' }) } }, h('md-icon', { slot: 'icon' }, 'add'), 'Add decks')),
+    ),
+    group(
+      row('sort', 'Sort decks by', null, select(() => l.sort, (v) => { set({ sort: v }); emit('decks'); },
+        [['name', 'Name'], ['recent', 'Recently opened'], ['modified', 'Recently added'], ['studied', 'Most studied'], ['progress', 'Least mastered']])),
+      row('star', 'Favourites first', 'Pin starred decks to the top', sw(() => l.favouritesFirst, (v) => { set({ favouritesFirst: v }); emit('decks'); })),
+    ),
+    h('p.body-small.muted', 'Tip: use Backup & reset → Export backup to move your decks, edits and stats to another phone.'),
+  ];
+}
+
 function library() {
+  if (store.platform !== 'desktop') return mobileLibrary();
   const l = S().library;
   const set = (p, rescan) => setSettings({ library: p }, { immediate: !!rescan }).then(() => rescan && emit('rescan'));
   const folders = l.folders.map((f) => h('div.folder-row', icon('folder'), h('span.fp', { title: f }, f),
@@ -309,6 +328,9 @@ function library() {
 }
 
 function network() {
+  if (store.platform === 'web') {
+    return [...header('Offline & network', 'In a web browser, CDN files are cached by the browser itself. The desktop and Android apps keep their own offline copies.')];
+  }
   const n = S().network;
   const cacheRow = h('div.s-row', icon('storage'), h('div.s-text', h('div.t', 'Offline cache'), h('div.d#cache-info', 'Calculating…')),
     h('md-outlined-button', {
@@ -430,12 +452,13 @@ function shortcuts() {
 
 function windowSection() {
   const w = S().window, g = S().general;
+  const desktop = store.platform === 'desktop';
   return [
-    ...header('Window & startup'),
+    ...header(desktop ? 'Window & startup' : 'Startup'),
     group(
-      row('web_asset', 'Custom title bar', 'Material title bar with search. Turn off to use your desktop’s window decorations.', sw(() => w.customTitlebar, (v) => setSettings({ window: { customTitlebar: v } }, { immediate: true }).then(() => emit('titlebar')))),
+      !desktop ? null : row('web_asset', 'Custom title bar', 'Material title bar with search. Turn off to use your desktop’s window decorations.', sw(() => w.customTitlebar, (v) => setSettings({ window: { customTitlebar: v } }, { immediate: true }).then(() => emit('titlebar')))),
       row('start', 'Start on', null, select(() => g.startPage, (v) => setSettings({ general: { startPage: v } }), [['library', 'Library'], ['lastDeck', 'Last opened deck'], ['stats', 'Stats']])),
-      row('filter_1', 'Single window', 'Opening a deck from the file manager reuses the running window', sw(() => g.singleInstance, (v) => setSettings({ general: { singleInstance: v } }))),
+      !desktop ? null : row('filter_1', 'Single window', 'Opening a deck from the file manager reuses the running window', sw(() => g.singleInstance, (v) => setSettings({ general: { singleInstance: v } }))),
       row('delete', 'Confirm before removing decks', null, sw(() => g.confirmDelete, (v) => setSettings({ general: { confirmDelete: v } }))),
     ),
   ];
@@ -443,9 +466,11 @@ function windowSection() {
 
 function backup() {
   return [
-    ...header('Backup & reset', 'Backups contain settings, favourites, renamed decks, edited cards and all stats — not the deck files themselves.'),
+    ...header('Backup & reset', store.platform === 'desktop'
+      ? 'Backups contain settings, favourites, renamed decks, edited cards and all stats — not the deck files themselves.'
+      : 'Backups contain your decks, settings, favourites, edited cards and all stats in one .json file.'),
     group(
-      row('backup', 'Export backup', 'Save everything to a .zip file', h('md-outlined-button', { on: { click: async () => { const f = await call('exportBackup'); if (f) snackbar(`Backup saved to ${f}`); } } }, 'Export')),
+      row('backup', 'Export backup', store.platform === 'desktop' ? 'Save everything to a .zip file' : 'Save everything to a .json file', h('md-outlined-button', { on: { click: async () => { const f = await call('exportBackup'); if (f) snackbar(`Backup saved to ${f}`); } } }, 'Export')),
       row('restore', 'Restore backup', 'Replaces current settings and stats', h('md-outlined-button', {
         on: {
           click: async () => {

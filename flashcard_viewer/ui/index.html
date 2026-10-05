@@ -2,11 +2,21 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#6750a4">
 <title>Flashcard Viewer</title>
 <link rel="stylesheet" href="vendor/fonts.css">
 <link rel="stylesheet" href="css/app.css">
-<script src="/qwebchannel.js"></script>
+<script>
+  // The UI needs a modern Chromium (WebView 111+). Old Android System WebView builds get a hint instead of a blank screen.
+  if (!(window.CSS && CSS.supports && CSS.supports('color', 'color-mix(in srgb, red, blue)'))) {
+    document.addEventListener('DOMContentLoaded', function () {
+      document.body.innerHTML = '<div style="font:16px/1.5 sans-serif;padding:32px;max-width:520px;margin:auto">' +
+        '<h2>Please update Android System WebView</h2><p>Flashcard Viewer needs a newer version of <b>Android System WebView</b> ' +
+        '(or Chrome). Update it from the Play Store, then reopen the app.</p></div>';
+    });
+  }
+</script>
 <script type="module" src="js/main.js"></script>
 </head>
 <body class="booting">
@@ -83,6 +93,7 @@
 
         <div class="viewer" id="viewer">
           <div class="viewer-toolbar" id="viewer-toolbar">
+            <md-icon-button id="vt-back" class="mobile-only" title="Back to library"><md-icon>arrow_back</md-icon></md-icon-button>
             <div class="vt-title">
               <span class="vt-emoji" id="vt-emoji"></span>
               <div class="vt-text">
@@ -105,8 +116,13 @@
             <span style="position:relative">
               <md-icon-button id="vt-more" title="More"><md-icon>more_vert</md-icon></md-icon-button>
               <md-menu id="menu-more" anchor="vt-more" positioning="popover">
+                <md-menu-item id="mi-cards" class="mobile-only"><div slot="headline">View / edit cards</div><md-icon slot="start">edit_note</md-icon></md-menu-item>
+                <md-menu-item id="mi-zoom-in" class="mobile-only" keep-open><div slot="headline">Zoom in</div><md-icon slot="start">zoom_in</md-icon></md-menu-item>
+                <md-menu-item id="mi-zoom-out" class="mobile-only" keep-open><div slot="headline">Zoom out</div><md-icon slot="start">zoom_out</md-icon></md-menu-item>
+                <md-menu-item id="mi-reload" class="mobile-only"><div slot="headline">Reload</div><md-icon slot="start">refresh</md-icon></md-menu-item>
+                <md-menu-item id="mi-fullscreen" class="mobile-only"><div slot="headline">Full screen</div><md-icon slot="start">fullscreen</md-icon></md-menu-item>
                 <md-menu-item id="mi-rename"><div slot="headline">Rename</div><md-icon slot="start">drive_file_rename_outline</md-icon></md-menu-item>
-                <md-menu-item id="mi-reveal"><div slot="headline">Show in folder</div><md-icon slot="start">folder_open</md-icon></md-menu-item>
+                <md-menu-item id="mi-reveal" class="desktop-only"><div slot="headline">Show in folder</div><md-icon slot="start">folder_open</md-icon></md-menu-item>
                 <md-menu-item id="mi-stats"><div slot="headline">Deck statistics</div><md-icon slot="start">insights</md-icon></md-menu-item>
                 <md-menu-item id="mi-info"><div slot="headline">Deck info</div><md-icon slot="start">info</md-icon></md-menu-item>
                 <md-divider></md-divider>
@@ -122,7 +138,7 @@
               <p class="body-medium muted">Decks are HTML or React files in your watched folders. Drop files anywhere in this window to add them.</p>
               <div class="row gap">
                 <md-filled-button id="empty-add"><md-icon slot="icon">add</md-icon>Add decks</md-filled-button>
-                <md-outlined-button id="empty-folder"><md-icon slot="icon">folder_open</md-icon>Open decks folder</md-outlined-button>
+                <md-outlined-button id="empty-folder" class="desktop-only"><md-icon slot="icon">folder_open</md-icon>Open decks folder</md-outlined-button>
               </div>
             </div>
             <div class="frame-loading hidden" id="frame-loading"><md-circular-progress indeterminate></md-circular-progress></div>

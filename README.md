@@ -1,6 +1,6 @@
 # Flashcard Viewer
 
-A Linux desktop app for studying AI-generated HTML flashcard decks (artifacts),
+An app for **Linux, Windows and Android** for studying AI-generated HTML flashcard decks (artifacts),
 so you don't need to open them in a browser. It has a Material 3 interface, with popular
 themes, quizzes graded by similarity, and progress tracking.
 
@@ -60,7 +60,33 @@ themes, quizzes graded by similarity, and progress tracking.
 | ![Glass dark](docs/screenshots/glass-dark.png) | ![Monokai + AMOLED + Comic Relief](docs/screenshots/monokai-amoled-search.png) |
 | ![Catppuccin Latte](docs/screenshots/catppuccin-latte.png) | ![Card editor](docs/screenshots/card-editor.png) |
 
-## Install
+## Download
+
+Ready-made builds are attached to each [GitHub release](https://github.com/Naved124/flashcard-viewer/releases/latest):
+
+| Platform | File | Notes |
+|---|---|---|
+| **Windows 10/11 (64-bit)** | `FlashcardViewer-Setup-<version>.exe` | Normal installer: Start-menu entry, optional desktop icon, optional “Open with” for .html/.htm/.jsx/.tsx. Installs per-user by default (no admin needed). Windows SmartScreen may warn because the installer isn't code-signed: click **More info → Run anyway**. |
+| **Android 8.0+** | `FlashcardViewer-<version>.apk` | Allow “Install unknown apps” for your browser or file manager, then open the APK. Needs an up-to-date **Android System WebView** (from the Play Store). |
+| **Linux** | from source, see below | `./install.sh` adds an app-menu entry. |
+
+Every push to `main` also builds both packages. You can download them from the **Actions** tab, under the run's *Artifacts*.
+
+### Android notes
+
+- The Android app has the same interface, quiz, tracker, themes and settings. Phones get a compact layout with a bottom navigation bar.
+- Decks are stored **inside the app**. You can add them in three ways:
+  - with the **+** button, which opens the system file picker
+  - by opening an `.html` file and choosing **Flashcard Viewer**
+  - by sharing a file to the app
+- **Settings → Backup & reset → Export backup** saves your decks, edits and stats to one `.json` file, which you can restore on another phone.
+- CDN files that decks load (Tailwind, fonts, KaTeX) are cached the first time, so decks also work offline afterwards.
+- **Signing.** APKs from this repo are signed with a public “sideload” key that is committed in `android/app/sideload.keystore`.
+  That lets every new build install over the previous one. To sign with your own private key instead, add four repository
+  secrets: `ANDROID_KEYSTORE_BASE64` (a base64-encoded keystore), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and
+  `ANDROID_KEY_PASSWORD`. Switching keys requires uninstalling the old app once.
+
+## Install on Linux
 
 You need Python 3.9 or newer. The install works on any distro (Ubuntu/Debian/Mint, Fedora, Arch, …), on X11 and Wayland.
 
@@ -148,6 +174,12 @@ FLASHCARD_VIEWER_DEBUG=1 python3 -m flashcard_viewer   # prints JS console messa
   This is how the screenshots above were made.
 - The bundled web assets in `flashcard_viewer/ui/vendor/` are built by `tools/vendor-build/build.mjs`
   (`cd tools/vendor-build && npm install && node build.mjs`).
+- **Android / browser backend.** On Android the same UI runs on a JavaScript port of the backend in
+  `flashcard_viewer/ui/js/core/`. `npm install && npm test` checks it against the same samples and grading cases as
+  the Python tests. `tools/web_driver.mjs` drives it in Chromium at phone size. `android/` is a small Java WebView
+  shell; build it with `gradle -p android assembleRelease` (needs the Android SDK).
+- **Windows.** `pyinstaller packaging/windows/flashcard-viewer.spec` freezes the app, and `packaging/windows/installer.iss`
+  (Inno Setup) wraps it into `setup.exe`. Both run automatically in `.github/workflows/build.yml`.
 
 **Architecture.** A PyQt6 window hosts a single Qt WebEngine view.
 - The interface (`flashcard_viewer/ui/`) is plain JavaScript modules plus Material Web components. It talks to Python
