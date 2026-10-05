@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import threading
 import time
 import traceback
@@ -22,6 +23,25 @@ from . import __version__, paths, updater
 from .config import DEFAULTS, deep_merge
 from .library import DECK_EXTS, deck_id_for
 from .quiz import build_quiz, grade_response
+
+
+BACKUP_MAX_BYTES = 64 * 1024 * 1024
+_OVERRIDE_NAME = re.compile(r"overrides/([A-Za-z0-9_-]{1,64}\.json)")
+
+
+def backup_entries(z: zipfile.ZipFile) -> dict[str, zipfile.ZipInfo]:
+    """The members of a backup zip the app restores, after checking names and sizes. Backups may come
+    from someone else, so nothing outside the known file names is touched (no path tricks)."""
+    out = {}
+    total = 0
+    for info in z.infolist():
+        name = info.filename
+        if name in ("settings.json", "library.json", "stats.json") or _OVERRIDE_NAME.fullmatch(name):
+            total += info.file_size
+            if info.file_size > BACKUP_MAX_BYTES or total > BACKUP_MAX_BYTES:
+                raise ValueError("backup is too large")
+            out[name] = info
+    return out
 
 
 def _j(obj) -> str:
@@ -232,8 +252,17 @@ class Bridge(QObject):
     @pyqtSlot(str, result=str)
     @_safe
     def openPath(self, path: str) -> str:
-        Path(os.path.expanduser(path)).mkdir(parents=True, exist_ok=True)
-        QDesktopServices.openUrl(QUrl.fromLocalFile(os.path.expanduser(path)))
+        # Only folders the app itself uses: never an arbitrary path (which the OS might "open" by running it).
+        target = Path(os.path.expanduser(path)).resolve()
+        allowed = {paths.data_dir().resolve(), paths.config_dir().resolve()}
+        allowed |= {Path(os.path.expanduser(f)).resolve() for f in self.settings.data["library"]["folders"]}
+        main = self.settings.data["library"].get("mainFolder")
+        if main:
+            allowed.add(Path(os.path.expanduser(main)).resolve())
+        if target not in allowed:
+            raise PermissionError("not an app folder")
+        target.mkdir(parents=True, exist_ok=True)
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(target)))
         return _j(True)
 
     # -- cards & quiz ----------------------------------------------------------------
@@ -351,20 +380,22 @@ class Bridge(QObject):
         if not f:
             return _j(None)
         with zipfile.ZipFile(f) as z:
-            names = set(z.namelist())
-            if "settings.json" in names:
-                self.settings.data = deep_merge(DEFAULTS, json.loads(z.read("settings.json")))
+            entries = backup_entries(z)
+            if "settings.json" in entries:
+                self.settings.data = deep_merge(DEFAULTS, json.loads(z.read(entries["settings.json"])))
                 self.settings.save()
-            if "library.json" in names:
-                self.library.state.data.update(json.loads(z.read("library.json")))
+            if "library.json" in entries:
+                self.library.state.data.update(json.loads(z.read(entries["library.json"])))
                 self.library.state.save()
-            if "stats.json" in names:
-                self.stats.load(json.loads(z.read("stats.json")))
+            if "stats.json" in entries:
+                self.stats.load(json.loads(z.read(entries["stats.json"])))
             od = paths.data_dir() / "overrides"
             od.mkdir(parents=True, exist_ok=True)
-            for n in names:
-                if n.startswith("overrides/") and n.endswith(".json") and "/" not in n[len("overrides/"):]:
-                    (od / n[len("overrides/"):]).write_bytes(z.read(n))
+            for n, info in entries.items():
+                m = _OVERRIDE_NAME.fullmatch(n)
+                if m:
+                    json.loads(z.read(info))  # must be valid JSON
+                    (od / m.group(1)).write_bytes(z.read(info))
         self.ctx.rescan()
         return _j({"settings": self.settings.data})
 

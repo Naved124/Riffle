@@ -7,22 +7,23 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Read-only by default; only the release job may write (it publishes the GitHub Release).
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.12"
       - name: Python tests
         run: |
           pip install beautifulsoup4 pytest
           pytest -q
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "22"
       - name: JavaScript tests (Android backend)
@@ -34,8 +35,8 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.12"
       - name: Build wheel (what in-app updates install on Linux)
@@ -44,7 +45,7 @@ jobs:
           pip install --no-deps dist/*.whl
           python -c "import flashcard_viewer, pathlib; p = pathlib.Path(flashcard_viewer.__file__).parent; assert (p / 'ui/index.html').exists() and (p / 'ui/vendor/material.js').exists()"
           ls -la dist
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: release-linux
           path: dist/*.whl
@@ -54,11 +55,11 @@ jobs:
     needs: test
     runs-on: windows-latest
     env:
-      WIN_PFX: ${{ secrets.WINDOWS_CERT_PFX_BASE64 }}
-      WIN_PFX_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+      # Only whether a certificate exists; the secret itself goes to the signing steps alone.
+      HAS_WIN_CERT: ${{ secrets.WINDOWS_CERT_PFX_BASE64 != '' }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.12"
       - name: Install
@@ -71,8 +72,11 @@ jobs:
       # your name as the publisher and, with a trusted certificate, stops SmartScreen warnings.
       # Updates are protected by the release signature below either way.
       - name: Code-sign the app (optional)
-        if: env.WIN_PFX != ''
+        if: env.HAS_WIN_CERT == 'true'
         shell: pwsh
+        env:
+          WIN_PFX: ${{ secrets.WINDOWS_CERT_PFX_BASE64 }}
+          WIN_PFX_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
         run: |
           $pfx = Join-Path $env:RUNNER_TEMP 'cert.pfx'
           [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WIN_PFX))
@@ -96,8 +100,11 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "ISCC failed" }
           Get-ChildItem dist\*.exe
       - name: Code-sign the installer (optional)
-        if: env.WIN_PFX != ''
+        if: env.HAS_WIN_CERT == 'true'
         shell: pwsh
+        env:
+          WIN_PFX: ${{ secrets.WINDOWS_CERT_PFX_BASE64 }}
+          WIN_PFX_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
         run: |
           $pfx = Join-Path $env:RUNNER_TEMP 'cert.pfx'
           [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WIN_PFX))
@@ -106,7 +113,7 @@ jobs:
           & $signtool sign /f $pfx /p $env:WIN_PFX_PASSWORD /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 $files
           if ($LASTEXITCODE -ne 0) { throw "signtool failed" }
           Remove-Item $pfx
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: release-windows
           path: dist/FlashcardViewer-Setup-*.exe
@@ -116,10 +123,11 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     env:
-      KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      # Only whether a signing key exists; the key itself goes to the signing step alone.
+      HAS_ANDROID_KEY: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
         with:
           distribution: temurin
           java-version: "17"
@@ -127,27 +135,30 @@ jobs:
         run: |
           echo "ANDROID_HOME=$ANDROID_HOME"
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4.4.3
         with:
           gradle-version: "8.9"
-      - name: Signing key from repository secrets
-        if: env.KS_B64 != ''
-        run: |
-          echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/release.keystore"
-          echo "ANDROID_KEYSTORE_FILE=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
-          echo "ANDROID_KEYSTORE_PASSWORD=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" >> "$GITHUB_ENV"
-          echo "ANDROID_KEY_ALIAS=${{ secrets.ANDROID_KEY_ALIAS }}" >> "$GITHUB_ENV"
-          echo "ANDROID_KEY_PASSWORD=${{ secrets.ANDROID_KEY_PASSWORD }}" >> "$GITHUB_ENV"
+      # The passwords only reach the one step that signs, through its environment (never pasted into
+      # a script or exported to later steps); the keystore file is deleted right after.
       - name: Build signed release APK
-        if: env.KS_B64 != ''
+        if: env.HAS_ANDROID_KEY == 'true'
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
+          umask 077
+          export ANDROID_KEYSTORE_FILE="$RUNNER_TEMP/release.keystore"
+          printf '%s' "$KS_B64" | base64 -d > "$ANDROID_KEYSTORE_FILE"
+          trap 'rm -f "$ANDROID_KEYSTORE_FILE"' EXIT
           gradle -p android assembleRelease --no-daemon --stacktrace
           ver=$(sed -n 's/^__version__ = "\(.*\)"/\1/p' flashcard_viewer/__init__.py)
           mkdir -p dist
           cp android/app/build/outputs/apk/release/app-release.apk "dist/FlashcardViewer-$ver.apk"
           ls -la dist
-      - uses: actions/upload-artifact@v4
-        if: env.KS_B64 != ''
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: env.HAS_ANDROID_KEY == 'true'
         with:
           name: release-android
           path: dist/*.apk
@@ -155,12 +166,12 @@ jobs:
       # Without the secrets (forks, or before the key is set up) only a debug build is made, and the
       # release gets no APK: a build signed with any other key couldn't update installed apps.
       - name: Build debug APK (no signing key configured)
-        if: env.KS_B64 == ''
+        if: env.HAS_ANDROID_KEY != 'true'
         run: |
           echo "::warning title=Android signing key missing::Run tools/make-release-keys.sh and add the repository secrets it lists. This release will have no APK."
           gradle -p android assembleDebug --no-daemon --stacktrace
-      - uses: actions/upload-artifact@v4
-        if: env.KS_B64 == ''
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: env.HAS_ANDROID_KEY != 'true'
         with:
           name: debug-android
           path: android/app/build/outputs/apk/debug/*.apk
@@ -169,15 +180,17 @@ jobs:
   # Publishes (or refreshes) the GitHub Release "v<version>" from main, so the latest
   # setup.exe and APK are always one click away on the Releases page.
   release:
+    permissions:
+      contents: write
     if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
     needs: [linux, windows, android]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Read version
         id: ver
         run: echo "version=$(sed -n 's/^__version__ = "\(.*\)"/\1/p' flashcard_viewer/__init__.py)" >> "$GITHUB_OUTPUT"
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           path: artifacts
           pattern: release-*
@@ -212,7 +225,7 @@ jobs:
           openssl pkey -in "$RUNNER_TEMP/release.pem" -pubout -out "$RUNNER_TEMP/release.pub"
           openssl pkeyutl -verify -pubin -inkey "$RUNNER_TEMP/release.pub" -rawin -in SHA256SUMS -sigfile SHA256SUMS.sig
           rm -f "$RUNNER_TEMP/release.pem"
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
           tag_name: v${{ steps.ver.outputs.version }}
           target_commitish: ${{ github.sha }}

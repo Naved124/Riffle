@@ -106,7 +106,7 @@ export class JsBackend {
     }
     window.__fvImport = (name, text) => this.importExternal(name, text);
     if (android() && android().pendingImports) {
-      try { for (const f of JSON.parse(android().pendingImports() || '[]')) await this.importExternal(f.name, f.text, false); } catch (_) { /* ignore */ }
+      try { for (const f of JSON.parse(android().pendingImports(KEY) || '[]')) await this.importExternal(f.name, f.text, false); } catch (_) { /* ignore */ }
     }
     if (android() && android().setNetworkMode) android().setNetworkMode(KEY, this.settingsData.network.mode);
     // Download/install progress from MainActivity.

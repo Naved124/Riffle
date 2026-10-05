@@ -1,8 +1,8 @@
 """Custom URL schemes and the offline CDN cache.
 
 * ``app://shell/...``      the application UI (flashcard_viewer/ui)
-* ``deck://<deck-id>/...`` a deck, its sibling files, and the helper runtime
-                            under ``/__fv/`` (each deck is its own origin)
+* ``deck://<deck-id>/...`` a deck, the web assets next to it (see netpolicy.sibling_allowed), and
+                            the helper runtime under ``/__fv/`` (each deck is its own origin)
 * ``cdn://<host>/<path>``   cached copy of ``https://<host>/<path>``
 
 Deck HTML (and CSS fetched through the cache) has its ``https://`` resource URLs
@@ -11,6 +11,10 @@ Tailwind or fonts from a CDN keeps working offline once it has been opened
 online. (Redirecting requests to a custom scheme from the interceptor crashes
 Chromium's renderer, so URLs are rewritten at the source instead; the
 interceptor only blocks stray requests in strict offline mode.)
+
+Decks are untrusted: app:// and deck:// replies carry no CORS header, so one origin can't read
+another's files, and cdn:// only lets a deck read a response the real server allows cross-origin,
+and never fetches from this machine or the local network (netpolicy.is_public_host).
 """
 
 from __future__ import annotations
@@ -30,6 +34,7 @@ from PyQt6.QtWebEngineCore import (QWebEngineUrlRequestInfo, QWebEngineUrlReques
                                    QWebEngineUrlRequestJob, QWebEngineUrlScheme, QWebEngineUrlSchemeHandler)
 
 from . import paths
+from .netpolicy import is_public_host, sibling_allowed
 from .render import render_deck
 
 UI_DIR = Path(__file__).resolve().parent / "ui"
@@ -68,7 +73,8 @@ def _mime(path: str) -> str:
     return m or "application/octet-stream"
 
 
-def _reply(job: QWebEngineUrlRequestJob, data: bytes, mime: str, cors: bool = True) -> None:
+def _reply(job: QWebEngineUrlRequestJob, data: bytes, mime: str, cors: bool = False) -> None:
+    """Answer a request. ``cors`` adds Access-Control-Allow-Origin: * so other origins may read it."""
     if cors and hasattr(job, "setAdditionalResponseHeaders"):
         try:
             from PyQt6.QtCore import QByteArray as BA
@@ -119,6 +125,14 @@ def rewrite_resource(data: bytes, mime: str) -> bytes:
     return data
 
 
+def _initiator(job: QWebEngineUrlRequestJob) -> QUrl:
+    """Origin of the page that made the request (empty for the app's own navigations)."""
+    try:
+        return job.initiator()
+    except AttributeError:  # pragma: no cover - very old Qt
+        return QUrl()
+
+
 def _safe_join(root: Path, rel: str) -> Path | None:
     rel = unquote(rel).lstrip("/")
     p = (root / rel).resolve()
@@ -133,6 +147,9 @@ class AppSchemeHandler(QWebEngineUrlSchemeHandler):
     """Serves the UI bundle and the per-deck runtime helpers."""
 
     def requestStarted(self, job: QWebEngineUrlRequestJob) -> None:  # noqa: N802
+        if _initiator(job).scheme() == "deck":  # decks get their runtime from deck://<id>/__fv/
+            job.fail(QWebEngineUrlRequestJob.Error.RequestDenied)
+            return
         path = job.requestUrl().path()
         if path == "/qwebchannel.js":
             f = QFile(":/qtwebchannel/qwebchannel.js")
@@ -157,6 +174,10 @@ class DeckSchemeHandler(QWebEngineUrlSchemeHandler):
     def requestStarted(self, job: QWebEngineUrlRequestJob) -> None:  # noqa: N802
         url = job.requestUrl()
         deck_id = url.host()
+        origin = _initiator(job)
+        if origin.scheme() == "deck" and origin.host() != deck_id:  # one deck may not read another
+            job.fail(QWebEngineUrlRequestJob.Error.RequestDenied)
+            return
         path = unquote(url.path())
         if path.startswith("/__fv/"):
             p = _safe_join(UI_DIR / "deck-runtime", path[len("/__fv/"):]) if not path.startswith("/__fv/vendor/") \
@@ -184,8 +205,9 @@ class DeckSchemeHandler(QWebEngineUrlSchemeHandler):
                 html = rewrite_html(html)
             _reply(job, html.encode("utf-8"), "text/html;charset=utf-8")
             return
-        # Sibling resources (images, css) relative to the deck file.
-        p = _safe_join(Path(info.folder), path)
+        # Web assets (images, css, fonts...) next to the deck. A deck opened from elsewhere ("Open with",
+        # e.g. from Downloads) gets none: its folder isn't one the user chose as a deck library.
+        p = _safe_join(Path(info.folder), path) if not info.external and sibling_allowed(path) else None
         if p and p.is_file():
             _reply(job, p.read_bytes(), _mime(str(p)))
         else:
@@ -200,21 +222,23 @@ class CdnCache:
     def _key(self, url: str) -> Path:
         return self.root / hashlib.sha256(url.encode()).hexdigest()
 
-    def get(self, url: str) -> tuple[bytes, str] | None:
+    def get(self, url: str) -> tuple[bytes, str, bool] | None:
+        """(data, mime, cors) where cors says whether the origin server allowed cross-origin reads."""
         base = self._key(url)
         try:
             meta = json.loads((base.with_suffix(".json")).read_text())
-            return base.with_suffix(".bin").read_bytes(), meta["mime"]
+            cors = meta.get("cors", is_public_host(QUrl(url).host()))  # entries from older versions
+            return base.with_suffix(".bin").read_bytes(), meta["mime"], bool(cors)
         except (OSError, ValueError, KeyError):
             return None
 
     def has(self, url: str) -> bool:
         return self._key(url).with_suffix(".bin").exists()
 
-    def put(self, url: str, data: bytes, mime: str) -> None:
+    def put(self, url: str, data: bytes, mime: str, cors: bool = False) -> None:
         base = self._key(url)
         base.with_suffix(".bin").write_bytes(data)
-        base.with_suffix(".json").write_text(json.dumps({"url": url, "mime": mime, "ts": time.time()}))
+        base.with_suffix(".json").write_text(json.dumps({"url": url, "mime": mime, "cors": cors, "ts": time.time()}))
 
     def size(self) -> tuple[int, int]:
         files = list(self.root.glob("*.bin"))
@@ -245,9 +269,12 @@ class CdnSchemeHandler(QWebEngineUrlSchemeHandler):
 
     def requestStarted(self, job: QWebEngineUrlRequestJob) -> None:  # noqa: N802
         url = cdn_to_https(job.requestUrl())
+        if not is_public_host(job.requestUrl().host()):
+            job.fail(QWebEngineUrlRequestJob.Error.RequestDenied)
+            return
         hit = self.cache.get(url)
         if hit:
-            _reply(job, rewrite_resource(hit[0], hit[1]), hit[1])
+            _reply(job, rewrite_resource(hit[0], hit[1]), hit[1], cors=hit[2])
             return
         if self.settings.data["network"]["mode"] == "offline":
             job.fail(QWebEngineUrlRequestJob.Error.RequestFailed)
@@ -269,6 +296,10 @@ class CdnSchemeHandler(QWebEngineUrlSchemeHandler):
         jobs = self._pending.pop(url, [])
         status = reply.attribute(QNetworkRequest.Attribute.HttpStatusCodeAttribute)
         ok = reply.error() == QNetworkReply.NetworkError.NoError and (status or 200) < 400
+        if ok and not is_public_host(reply.url().host()):  # redirected onto the local network
+            ok = False
+        # Mirror the origin's CORS policy, like a browser would.
+        cors = bool(bytes(reply.rawHeader(b"Access-Control-Allow-Origin")).strip())
         data = bytes(reply.readAll()) if ok else b""
         mime = str(reply.header(QNetworkRequest.KnownHeaders.ContentTypeHeader) or "") or _mime(url.split("?")[0])
         if not ok and os.environ.get("FLASHCARD_VIEWER_DEBUG"):
@@ -276,13 +307,13 @@ class CdnSchemeHandler(QWebEngineUrlSchemeHandler):
         reply.deleteLater()
         if ok:
             try:
-                self.cache.put(url, data, mime)
+                self.cache.put(url, data, mime, cors)
             except OSError:
                 pass
         for job in jobs:
             try:
                 if ok:
-                    _reply(job, rewrite_resource(data, mime), mime)
+                    _reply(job, rewrite_resource(data, mime), mime, cors=cors)
                 else:
                     job.fail(QWebEngineUrlRequestJob.Error.RequestFailed)
             except RuntimeError:  # job already deleted (page navigated away)

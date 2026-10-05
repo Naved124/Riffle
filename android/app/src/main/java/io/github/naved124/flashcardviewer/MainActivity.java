@@ -37,6 +37,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.net.InetAddress;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -219,6 +220,10 @@ public class MainActivity extends Activity {
             if (list != null) uris.addAll(list);
         }
         for (Uri u : uris) {
+            if (!readableFromOutside(u)) {
+                Toast.makeText(this, "Can't open that file", Toast.LENGTH_LONG).show();
+                continue;
+            }
             try {
                 String text = readText(u);
                 deliverImport(displayName(u), text);
@@ -242,6 +247,24 @@ public class MainActivity extends Activity {
                 }
             }
         } catch (JSONException ignored) {
+        }
+    }
+
+    /**
+     * Another app can hand us any URI. A file:// one must not point into this app's private storage or
+     * system folders, or that app could make us import (and display) files only we can read.
+     */
+    private boolean readableFromOutside(Uri uri) {
+        if (!"file".equals(uri.getScheme())) return true;
+        String path = uri.getPath();
+        if (path == null) return false;
+        try {
+            String real = new File(path).getCanonicalPath();
+            String own = new File(getApplicationInfo().dataDir).getCanonicalPath();
+            return !(real.startsWith(own) || real.startsWith("/data/") || real.startsWith("/proc/")
+                    || real.startsWith("/sys/") || real.startsWith("/system/"));
+        } catch (IOException e) {
+            return false;
         }
     }
 
@@ -358,6 +381,9 @@ public class MainActivity extends Activity {
                 if (!"GET".equalsIgnoreCase(request.getMethod()) || request.isForMainFrame()) return null;
                 if (!"http".equals(scheme) && !"https".equals(scheme)) return null;
                 if ("api.github.com".equals(u.getHost())) return null; // update checks must never be served from the cache
+                // Never proxy this phone or the local network: the WebView then loads it itself, under
+                // normal cross-origin rules, so a deck can't read a router or local service through us.
+                if (!isPublicHost(u.getHost())) return null;
                 return serveCached(u.toString());
             } catch (Exception e) {
                 // Never let a bad request take the app down; the WebView falls back to a normal fetch.
@@ -396,10 +422,61 @@ public class MainActivity extends Activity {
     }
 
     private static Map<String, String> corsHeaders() {
+        return corsHeaders(true);
+    }
+
+    /** cors: allow cross-origin reads (true for app assets and for CDN files whose server allows it). */
+    private static Map<String, String> corsHeaders(boolean cors) {
         Map<String, String> h = new HashMap<>();
-        h.put("Access-Control-Allow-Origin", "*");
+        if (cors) h.put("Access-Control-Allow-Origin", "*");
         h.put("Cache-Control", "no-cache");
         return h;
+    }
+
+    private static final String[] LOCAL_SUFFIXES = {".localhost", ".local", ".internal", ".intranet", ".lan", ".home", ".home.arpa", ".corp"};
+
+    /** False for loopback, private, link-local and other non-public hosts (same rules as netpolicy.py). */
+    static boolean isPublicHost(String host) {
+        if (host == null) return false;
+        String h = host.trim().toLowerCase(Locale.ROOT);
+        while (h.endsWith(".")) h = h.substring(0, h.length() - 1);
+        if (h.startsWith("[") && h.endsWith("]")) h = h.substring(1, h.length() - 1);
+        if (h.isEmpty() || h.equals("localhost")) return false;
+        for (String s : LOCAL_SUFFIXES) if (h.endsWith(s)) return false;
+        if (!h.contains(".") && !h.contains(":")) return false;
+        if (h.contains(":")) return isPublicIp(h);
+        String[] parts = h.split("\\.", -1);
+        boolean numeric = parts.length <= 4;
+        for (String p : parts) numeric &= p.matches("0x[0-9a-f]*|\\d+");
+        if (!numeric) return true; // an ordinary host name
+        if (parts.length != 4) return false; // shorthand IPv4 such as 127.1 or 0x7f.1
+        for (String p : parts) {
+            if (!p.matches("\\d{1,3}") || Integer.parseInt(p) > 255) return false;
+        }
+        return isPublicIp(h);
+    }
+
+    private static boolean isPublicIp(String literal) {
+        try {
+            InetAddress a = InetAddress.getByName(literal); // a literal: no DNS lookup
+            byte[] b = a.getAddress();
+            if (b.length == 16 && isV4Mapped(b)) b = java.util.Arrays.copyOfRange(b, 12, 16);
+            if (a.isLoopbackAddress() || a.isAnyLocalAddress() || a.isLinkLocalAddress() || a.isSiteLocalAddress()
+                    || a.isMulticastAddress()) return false;
+            if (b.length == 4) {
+                int x = b[0] & 0xff, y = b[1] & 0xff;
+                return !(x == 0 || x == 10 || x == 127 || (x == 100 && y >= 64 && y < 128) || (x == 169 && y == 254)
+                        || (x == 172 && y >= 16 && y < 32) || (x == 192 && y == 168) || x >= 224);
+            }
+            return (b[0] & 0xfe) != 0xfc; // IPv6 unique-local fc00::/7
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private static boolean isV4Mapped(byte[] b) {
+        for (int i = 0; i < 10; i++) if (b[i] != 0) return false;
+        return (b[10] & 0xff) == 0xff && (b[11] & 0xff) == 0xff;
     }
 
     private WebResourceResponse serveAsset(String path) {
@@ -440,10 +517,12 @@ public class MainActivity extends Activity {
         String key = sha256(url);
         File body = new File(cdnDir, key + ".bin");
         File meta = new File(cdnDir, key + ".mime");
+        File corsFile = new File(cdnDir, key + ".cors");
         if (body.exists() && meta.exists()) {
             try {
                 String mime = readSmall(meta);
-                return new WebResourceResponse(baseMime(mime), charsetOf(mime), 200, "OK", corsHeaders(), new FileInputStream(body));
+                boolean cors = !corsFile.exists() || "1".equals(readSmall(corsFile).trim()); // older entries: allowed
+                return new WebResourceResponse(baseMime(mime), charsetOf(mime), 200, "OK", corsHeaders(cors), new FileInputStream(body));
             } catch (IOException ignored) {
             }
         }
@@ -457,6 +536,10 @@ public class MainActivity extends Activity {
             if (!userAgent.isEmpty()) c.setRequestProperty("User-Agent", userAgent);
             int code = c.getResponseCode();
             if (code >= 400) return null;
+            if (!isPublicHost(c.getURL().getHost())) return null; // redirected onto the local network
+            // Mirror the origin's CORS policy, like a browser would.
+            String acao = c.getHeaderField("Access-Control-Allow-Origin");
+            boolean cors = acao != null && !acao.trim().isEmpty();
             String mime = c.getContentType();
             if (mime == null) mime = "application/octet-stream";
             byte[] data = readAll(c.getInputStream());
@@ -466,7 +549,10 @@ public class MainActivity extends Activity {
             try (FileOutputStream out = new FileOutputStream(meta)) {
                 out.write(mime.getBytes(StandardCharsets.UTF_8));
             }
-            return new WebResourceResponse(baseMime(mime), charsetOf(mime), 200, "OK", corsHeaders(), new ByteArrayInputStream(data));
+            try (FileOutputStream out = new FileOutputStream(corsFile)) {
+                out.write((cors ? "1" : "0").getBytes(StandardCharsets.UTF_8));
+            }
+            return new WebResourceResponse(baseMime(mime), charsetOf(mime), 200, "OK", corsHeaders(cors), new ByteArrayInputStream(data));
         } catch (IOException e) {
             return null;
         } finally {
@@ -710,7 +796,8 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
-        public String pendingImports() {
+        public String pendingImports(String key) {
+            if (!keyOk(key)) return "[]";
             JSONArray arr = new JSONArray();
             synchronized (pendingImports) {
                 for (JSONObject o : pendingImports) arr.put(o);

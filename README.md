@@ -116,6 +116,9 @@ installers signed with a code-signing certificate from a certificate authority. 
 projects can apply for a free one from the SignPath Foundation. If you get one, add it as the `WINDOWS_CERT_PFX_BASE64`
 secret (a base64-encoded `.pfx`) and `WINDOWS_CERT_PASSWORD`, and CI signs `FlashcardViewer.exe` and the installer with it.
 
+Decks are treated as untrusted: they can't reach the app or other decks, and can only load ordinary
+web assets from their own folder. See [SECURITY.md](SECURITY.md) for details and for reporting problems.
+
 ### Verifying downloads
 
 ```bash
