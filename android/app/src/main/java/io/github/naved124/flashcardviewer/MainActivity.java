@@ -15,6 +15,7 @@ import android.provider.OpenableColumns;
 import android.view.View;
 import android.view.Window;
 import android.webkit.ConsoleMessage;
+import android.webkit.RenderProcessGoneDetail;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -67,6 +68,8 @@ public class MainActivity extends Activity {
     private volatile String networkMode = "offline-first";
     private final List<JSONObject> pendingImports = new ArrayList<>();
     private File cdnDir;
+    // Read once on the UI thread: WebView methods throw when called from the network threads.
+    private volatile String userAgent = "";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -78,6 +81,13 @@ public class MainActivity extends Activity {
         if ((getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
             WebView.setWebContentsDebuggingEnabled(true);
         }
+        createWebView();
+        handleIntent(getIntent());
+        if (savedInstanceState != null) web.restoreState(savedInstanceState);
+        else web.loadUrl(START_URL);
+    }
+
+    private void createWebView() {
         web = new WebView(this);
         setContentView(web);
 
@@ -92,15 +102,12 @@ public class MainActivity extends Activity {
         s.setSupportZoom(false);
         s.setLoadWithOverviewMode(true);
         s.setUseWideViewPort(true);
+        userAgent = s.getUserAgentString();
 
         web.addJavascriptInterface(new Bridge(), "AndroidBridge");
         web.setWebViewClient(new Client());
         web.setWebChromeClient(new Chrome());
         web.setBackgroundColor(Color.parseColor("#F3EDF7"));
-
-        handleIntent(getIntent());
-        if (savedInstanceState != null) web.restoreState(savedInstanceState);
-        else web.loadUrl(START_URL);
     }
 
     @Override
@@ -283,18 +290,39 @@ public class MainActivity extends Activity {
         public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
             Uri u = request.getUrl();
             if (HOST.equals(u.getHost())) return false;
-            openExternal(u.toString());
+            // Navigations inside the deck frame (anchors, about:srcdoc, forms) stay where they are.
+            if (!request.isForMainFrame()) return false;
+            String scheme = u.getScheme();
+            if ("http".equals(scheme) || "https".equals(scheme) || "mailto".equals(scheme)) openExternal(u.toString());
             return true;
         }
 
         @Override
         public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-            Uri u = request.getUrl();
-            String scheme = u.getScheme();
-            if (HOST.equals(u.getHost())) return serveAsset(u.getPath());
-            if (!"GET".equalsIgnoreCase(request.getMethod()) || request.isForMainFrame()) return null;
-            if (!"http".equals(scheme) && !"https".equals(scheme)) return null;
-            return serveCached(u.toString());
+            try {
+                Uri u = request.getUrl();
+                String scheme = u.getScheme();
+                if (HOST.equals(u.getHost())) return serveAsset(u.getPath());
+                if (!"GET".equalsIgnoreCase(request.getMethod()) || request.isForMainFrame()) return null;
+                if (!"http".equals(scheme) && !"https".equals(scheme)) return null;
+                return serveCached(u.toString());
+            } catch (Exception e) {
+                // Never let a bad request take the app down; the WebView falls back to a normal fetch.
+                android.util.Log.w("FlashcardViewer", "intercept failed: " + e);
+                return null;
+            }
+        }
+
+        @Override
+        public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
+            // A deck crashed or exhausted the web renderer. Without this the system kills the whole app.
+            if (view != web) return true;
+            pageReady = false;
+            web.destroy();
+            createWebView();
+            web.loadUrl(START_URL + "?recovered=1");
+            Toast.makeText(MainActivity.this, "That deck crashed the viewer and was closed", Toast.LENGTH_LONG).show();
+            return true;
         }
     }
 
@@ -373,7 +401,7 @@ public class MainActivity extends Activity {
             c.setConnectTimeout(15000);
             c.setReadTimeout(20000);
             c.setInstanceFollowRedirects(true);
-            c.setRequestProperty("User-Agent", web.getSettings().getUserAgentString());
+            if (!userAgent.isEmpty()) c.setRequestProperty("User-Agent", userAgent);
             int code = c.getResponseCode();
             if (code >= 400) return null;
             String mime = c.getContentType();
@@ -422,7 +450,7 @@ public class MainActivity extends Activity {
     private void openExternal(String url) {
         try {
             startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
-        } catch (ActivityNotFoundException e) {
+        } catch (RuntimeException e) { // ActivityNotFoundException, SecurityException, FileUriExposedException
             Toast.makeText(this, "No app can open this link", Toast.LENGTH_SHORT).show();
         }
     }

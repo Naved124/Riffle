@@ -277,7 +277,9 @@ async function boot() {
     goto('stats');
   } else {
     goto('library');
-    if (start === 'lastDeck' && init.settings.general.lastDeck) openDeck(init.settings.general.lastDeck, { quiet: true });
+    // After an Android renderer crash, don't reopen the deck that caused it.
+    const recovered = new URLSearchParams(location.search).has('recovered');
+    if (start === 'lastDeck' && init.settings.general.lastDeck && !recovered) openDeck(init.settings.general.lastDeck, { quiet: true });
   }
   requestAnimationFrame(() => document.body.classList.remove('booting'));
 }
