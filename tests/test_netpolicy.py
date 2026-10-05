@@ -41,7 +41,7 @@ def _zip(entries):
 
 
 def test_backup_restores_only_known_files():
-    from flashcard_viewer.bridge import backup_entries
+    from flashcard_viewer.backup import backup_entries
     z = _zip({"settings.json": "{}", "stats.json": "{}", "overrides/abc123.json": "{}",
               "overrides/..\\..\\evil.json": "{}", "overrides/../../evil.json": "{}", "overrides/sub/x.json": "{}",
               "../settings.json": "{}", "evil.sh": "rm -rf ~"})
@@ -49,7 +49,7 @@ def test_backup_restores_only_known_files():
 
 
 def test_backup_size_limit(monkeypatch):
-    from flashcard_viewer import bridge
-    monkeypatch.setattr(bridge, "BACKUP_MAX_BYTES", 10)
+    from flashcard_viewer import backup
+    monkeypatch.setattr(backup, "BACKUP_MAX_BYTES", 10)
     with pytest.raises(ValueError):
-        bridge.backup_entries(_zip({"stats.json": "x" * 11}))
+        backup.backup_entries(_zip({"stats.json": "x" * 11}))

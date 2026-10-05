@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import threading
 import time
 import traceback
@@ -20,28 +19,10 @@ from PyQt6.QtGui import QDesktopServices, QFontDatabase, QGuiApplication
 from PyQt6.QtWidgets import QFileDialog
 
 from . import __version__, paths, updater
+from .backup import OVERRIDE_NAME, backup_entries
 from .config import DEFAULTS, deep_merge
 from .library import DECK_EXTS, deck_id_for
 from .quiz import build_quiz, grade_response
-
-
-BACKUP_MAX_BYTES = 64 * 1024 * 1024
-_OVERRIDE_NAME = re.compile(r"overrides/([A-Za-z0-9_-]{1,64}\.json)")
-
-
-def backup_entries(z: zipfile.ZipFile) -> dict[str, zipfile.ZipInfo]:
-    """The members of a backup zip the app restores, after checking names and sizes. Backups may come
-    from someone else, so nothing outside the known file names is touched (no path tricks)."""
-    out = {}
-    total = 0
-    for info in z.infolist():
-        name = info.filename
-        if name in ("settings.json", "library.json", "stats.json") or _OVERRIDE_NAME.fullmatch(name):
-            total += info.file_size
-            if info.file_size > BACKUP_MAX_BYTES or total > BACKUP_MAX_BYTES:
-                raise ValueError("backup is too large")
-            out[name] = info
-    return out
 
 
 def _j(obj) -> str:
@@ -392,7 +373,7 @@ class Bridge(QObject):
             od = paths.data_dir() / "overrides"
             od.mkdir(parents=True, exist_ok=True)
             for n, info in entries.items():
-                m = _OVERRIDE_NAME.fullmatch(n)
+                m = OVERRIDE_NAME.fullmatch(n)
                 if m:
                     json.loads(z.read(info))  # must be valid JSON
                     (od / m.group(1)).write_bytes(z.read(info))
