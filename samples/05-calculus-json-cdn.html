@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Calculus Flashcards</title>
+<!-- Edge case: depends on CDNs (Tailwind play CDN, Google Fonts, KaTeX from cdnjs) — tests the offline cache.
+     Cards are JSON inside <script type="application/json">, with LaTeX in the text and numeric answers. -->
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<style> body { font-family: 'Space Grotesk', sans-serif; } </style>
+</head>
+<body class="bg-indigo-950 text-indigo-50 min-h-screen flex items-center justify-center">
+<script type="application/json" id="deck-data">
+{
+  "title": "Calculus I",
+  "cards": [
+    {"front": "Derivative of $x^2$", "back": "$2x$"},
+    {"front": "Derivative of $\\sin x$", "back": "$\\cos x$"},
+    {"front": "Integral of $\\frac{1}{x}\\,dx$", "back": "$\\ln|x| + C$"},
+    {"front": "Value of $\\lim_{x\\to 0} \\frac{\\sin x}{x}$", "back": "1"},
+    {"front": "Derivative of $e^x$", "back": "$e^x$"},
+    {"front": "What does the Fundamental Theorem of Calculus connect?", "back": "Differentiation and integration — they are inverse operations."},
+    {"front": "Acceleration due to gravity on Earth", "back": "9.81 m/s²"},
+    {"front": "Product rule: $(fg)'$ =", "back": "$f'g + fg'$"}
+  ]
+}
+</script>
+<main class="w-full max-w-xl p-6">
+  <h1 class="text-3xl font-semibold mb-6" id="title"></h1>
+  <div id="card" class="bg-indigo-800 rounded-3xl p-10 min-h-[220px] flex items-center justify-center text-2xl text-center shadow-2xl cursor-pointer"></div>
+  <div class="flex justify-between items-center mt-6">
+    <button id="prev" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500">Back</button>
+    <span id="pos" class="text-indigo-300"></span>
+    <button id="next" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500">Next</button>
+  </div>
+</main>
+<script>
+  const deck = JSON.parse(document.getElementById('deck-data').textContent);
+  let i = 0, back = false;
+  const el = document.getElementById('card');
+  function draw() {
+    const c = deck.cards[i];
+    el.textContent = back ? c.back : c.front;
+    el.classList.toggle('bg-emerald-700', back);
+    document.getElementById('pos').textContent = (i + 1) + ' of ' + deck.cards.length;
+    if (window.renderMathInElement) renderMathInElement(el, { delimiters: [{ left: '$', right: '$', display: false }] });
+  }
+  document.getElementById('title').textContent = deck.title;
+  el.onclick = () => { back = !back; draw(); };
+  document.getElementById('next').onclick = () => { i = Math.min(i + 1, deck.cards.length - 1); back = false; draw(); };
+  document.getElementById('prev').onclick = () => { i = Math.max(i - 1, 0); back = false; draw(); };
+  window.addEventListener('load', draw);
+  draw();
+</script>
+</body>
+</html>

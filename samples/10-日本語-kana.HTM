@@ -1,0 +1,34 @@
+<html>
+<head>
+<meta charset="utf-8">
+<title>ひらがな Hiragana</title>
+<!-- Edge case: unicode filename with an uppercase .HTM extension, sloppy/malformed HTML
+     (unclosed <div>/<p>, unquoted attribute), and cards stored in data-front / data-back attributes
+     with the visible text rendered by JS. -->
+<style>
+body { background:#fffaf0; font-family: "Noto Sans JP", sans-serif; text-align:center; padding-top:40px }
+.grid { display:flex; flex-wrap:wrap; gap:14px; justify-content:center; max-width:640px; margin:auto }
+.card { width:110px; height:110px; border-radius:14px; background:#ffe4e6; display:flex; align-items:center; justify-content:center; font-size:44px; cursor:pointer; box-shadow:0 4px 10px #0001 }
+.card.flip { background:#fecdd3; font-size:26px }
+</style>
+<body>
+<h1>ひらがな flashcards
+<p>Tap a kana to see its romaji
+<div class=grid>
+  <div class="card" data-front="あ" data-back="a"></div>
+  <div class="card" data-front="い" data-back="i"></div>
+  <div class="card" data-front="う" data-back="u">
+  <div class="card" data-front="え" data-back="e"></div>
+  <div class="card" data-front="お" data-back="o"></div>
+  <div class="card" data-front="か" data-back="ka"></div>
+  <div class="card" data-front="し" data-back="shi"></div>
+  <div class="card" data-front="つ" data-back="tsu"></div>
+  <div class="card" data-front="ふ" data-back="fu (hu)"></div>
+  <div class="card" data-front="ん" data-back="n"></div>
+</div>
+<script>
+document.querySelectorAll('.card').forEach(c => {
+  c.textContent = c.dataset.front;
+  c.onclick = (e) => { e.stopPropagation(); c.classList.toggle('flip'); c.textContent = c.classList.contains('flip') ? c.dataset.back : c.dataset.front; };
+});
+</script>

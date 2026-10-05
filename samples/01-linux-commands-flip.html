@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Linux Commands Flashcards</title>
+<!-- Edge case: every card is static DOM (.flashcard-front / .flashcard-back), only one visible at a time,
+     answers contain <code>, HTML entities (&lt; &amp;&amp;) and a "Card X of Y" counter. -->
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    color: #e2e8f0; padding: 24px;
+  }
+  h1 { font-size: 1.8rem; margin-bottom: 8px; }
+  .subtitle { color: #94a3b8; margin-bottom: 28px; }
+  .deck { width: 100%; max-width: 560px; height: 300px; perspective: 1200px; }
+  .flashcard { display: none; width: 100%; height: 100%; cursor: pointer; }
+  .flashcard.active { display: block; }
+  .flashcard-inner { position: relative; width: 100%; height: 100%; transition: transform .6s; transform-style: preserve-3d; }
+  .flashcard.flipped .flashcard-inner { transform: rotateY(180deg); }
+  .flashcard-front, .flashcard-back {
+    position: absolute; inset: 0; backface-visibility: hidden; border-radius: 18px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px; text-align: center;
+    box-shadow: 0 20px 40px rgba(0,0,0,.35);
+  }
+  .flashcard-front { background: #334155; font-size: 1.35rem; }
+  .flashcard-back { background: #0ea5e9; color: #04111d; transform: rotateY(180deg); font-size: 1.2rem; }
+  .flashcard-back code { background: rgba(0,0,0,.18); padding: 4px 10px; border-radius: 6px; font-size: 1.3rem; }
+  .label { position: absolute; top: 14px; left: 18px; font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; opacity: .6; }
+  .controls { display: flex; gap: 12px; margin-top: 28px; align-items: center; }
+  button { background: #475569; color: white; border: 0; padding: 10px 22px; border-radius: 999px; font-size: 1rem; cursor: pointer; }
+  button:hover { background: #64748b; }
+  #counter { min-width: 110px; text-align: center; color: #94a3b8; }
+  .hint { margin-top: 16px; font-size: .85rem; color: #64748b; }
+</style>
+</head>
+<body>
+  <h1>🐧 Linux Commands</h1>
+  <p class="subtitle">Click a card to flip it</p>
+
+  <div class="deck" id="deck">
+    <div class="flashcard">
+      <div class="flashcard-inner">
+        <div class="flashcard-front"><span class="label">Question</span>List all files, including hidden ones, in long format</div>
+        <div class="flashcard-back"><span class="label">Answer</span><code>ls -la</code></div>
+      </div>
+    </div>
+    <div class="flashcard">
+      <div class="flashcard-inner">
+        <div class="flashcard-front"><span class="label">Question</span>Which command changes file permissions?</div>
+        <div class="flashcard-back"><span class="label">Answer</span><code>chmod</code></div>
+      </div>
+    </div>
+    <div class="flashcard">
+      <div class="flashcard-inner">
+        <div class="flashcard-front"><span class="label">Question</span>Give a file rwx for owner and r-x for group and others (octal)</div>
+        <div class="flashcard-back"><span class="label">Answer</span><code>chmod 755 file</code></div>
+      </div>
+    </div>
+    <div class="flashcard">
+      <div class="flashcard-inner">
+        <div class="flashcard-front"><span class="label">Question</span>Redirect stdin from a file into <code>sort</code></div>
+        <div class="flashcard-back"><span class="label">Answer</span><code>sort &lt; input.txt</code></div>
+      </div>
+    </div>
+    <div class="flashcard">
+      <div class="flashcard-inner">
+        <div class="flashcard-front"><span class="label">Question</span>Run <code>make install</code> only if <code>make</code> succeeds</div>
+        <div class="flashcard-back"><span class="label">Answer</span><code>make &amp;&amp; make install</code></div>
+      </div>
+    </div>
+    <div class="flashcard">
+      <div class="flashcard-inner">
+        <div class="flashcard-front"><span class="label">Question</span>Show the current working directory</div>
+        <div class="flashcard-back"><span class="label">Answer</span><code>pwd</code></div>
+      </div>
+    </div>
+    <div class="flashcard">
+      <div class="flashcard-inner">
+        <div class="flashcard-front"><span class="label">Question</span>Search recursively for "TODO" in the current directory</div>
+        <div class="flashcard-back"><span class="label">Answer</span><code>grep -r "TODO" .</code></div>
+      </div>
+    </div>
+    <div class="flashcard">
+      <div class="flashcard-inner">
+        <div class="flashcard-front"><span class="label">Question</span>Which signal number is SIGKILL?</div>
+        <div class="flashcard-back"><span class="label">Answer</span>9</div>
+      </div>
+    </div>
+    <div class="flashcard">
+      <div class="flashcard-inner">
+        <div class="flashcard-front"><span class="label">Question</span>Follow a log file as it grows</div>
+        <div class="flashcard-back"><span class="label">Answer</span><code>tail -f /var/log/syslog</code></div>
+      </div>
+    </div>
+    <div class="flashcard">
+      <div class="flashcard-inner">
+        <div class="flashcard-front"><span class="label">Question</span>Show disk usage of mounted filesystems in human-readable form</div>
+        <div class="flashcard-back"><span class="label">Answer</span><code>df -h</code></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button id="prev">← Prev</button>
+    <span id="counter">Card 1 of 10</span>
+    <button id="next">Next →</button>
+  </div>
+  <p class="hint">Keyboard: ← → to navigate, Space to flip</p>
+
+<script>
+  const cards = [...document.querySelectorAll('.flashcard')];
+  let i = 0;
+  function show() {
+    cards.forEach((c, n) => { c.classList.toggle('active', n === i); c.classList.remove('flipped'); });
+    document.getElementById('counter').textContent = `Card ${i + 1} of ${cards.length}`;
+  }
+  cards.forEach(c => c.addEventListener('click', () => c.classList.toggle('flipped')));
+  document.getElementById('prev').onclick = () => { i = (i - 1 + cards.length) % cards.length; show(); };
+  document.getElementById('next').onclick = () => { i = (i + 1) % cards.length; show(); };
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight') document.getElementById('next').click();
+    if (e.key === 'ArrowLeft') document.getElementById('prev').click();
+    if (e.key === ' ') { e.preventDefault(); cards[i].classList.toggle('flipped'); }
+  });
+  show();
+</script>
+</body>
+</html>

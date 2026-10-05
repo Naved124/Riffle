@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Flashcard Viewer
+GenericName=Flashcard Study App
+Comment=Study HTML and React flashcard decks with quizzes and progress tracking
+Exec=@EXEC@ %F
+Icon=flashcard-viewer
+Terminal=false
+Categories=Education;Office;
+Keywords=flashcards;study;quiz;anki;learn;html;
+MimeType=text/html;application/xhtml+xml;text/jsx;text/x-jsx;text/tsx;text/x-tsx;
+StartupWMClass=flashcard-viewer
+StartupNotify=true

@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "flashcard-viewer"
+version = "1.0.0"
+description = "A Material 3 Linux desktop app for studying HTML / React flashcard decks, with quizzes and progress tracking."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+dependencies = [
+    "PyQt6>=6.6",
+    "PyQt6-WebEngine>=6.6",
+    "beautifulsoup4>=4.11",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
+[project.scripts]
+flashcard-viewer = "flashcard_viewer.app:main"
+
+[tool.setuptools]
+packages = ["flashcard_viewer"]
+
+[tool.setuptools.package-data]
+flashcard_viewer = ["ui/*", "ui/**/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

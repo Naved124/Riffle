@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Docker Quiz Cards</title>
+<!-- Edge case: a *quiz*-style artifact. There is no explicit "answer" string — the answer is
+     options[correct] (a zero-based index), or a letter ("B"), and some entries carry an explanation.
+     Also: the data array is declared with `let` and assigned on a later line via Object.freeze(). -->
+<style>
+  body { font-family: 'Inter', system-ui, sans-serif; background: #e0f2fe; color: #0c4a6e; display: flex; justify-content: center; padding: 48px 16px; margin: 0; }
+  .box { background: white; border-radius: 20px; padding: 32px; width: min(620px, 100%); box-shadow: 0 20px 50px #0c4a6e22; }
+  .opt { display: block; width: 100%; text-align: left; margin: 8px 0; padding: 12px 16px; border-radius: 12px; border: 2px solid #bae6fd; background: #f0f9ff; font-size: 1rem; cursor: pointer; }
+  .opt.right { border-color: #16a34a; background: #dcfce7; } .opt.wrong { border-color: #dc2626; background: #fee2e2; }
+  .exp { margin-top: 14px; color: #075985; font-size: .95rem; }
+  .top { display: flex; justify-content: space-between; color: #0369a1; }
+  #nextBtn { margin-top: 18px; padding: 10px 20px; border: 0; border-radius: 10px; background: #0284c7; color: white; cursor: pointer; }
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="top"><b>🐳 Docker</b><span id="prog"></span></div>
+  <h2 id="question"></h2>
+  <div id="options"></div>
+  <div class="exp" id="exp"></div>
+  <button id="nextBtn">Next question</button>
+</div>
+<script>
+let quizQuestions;
+quizQuestions = Object.freeze([
+  {
+    question: "Which instruction sets the default command of a container?",
+    options: ["RUN", "CMD", "COPY", "EXPOSE"],
+    correct: 1,
+    explanation: "CMD provides defaults for an executing container; RUN executes at build time.",
+  },
+  {
+    question: "Which command lists running containers?",
+    options: ["docker images", "docker ps", "docker run", "docker build"],
+    correct: 1,
+  },
+  {
+    question: "What file is used to define multi-container applications?",
+    options: ["Dockerfile", "docker-compose.yml", ".dockerignore", "package.json"],
+    answer: "B",
+  },
+  {
+    question: "Which flag maps a host port to a container port?",
+    options: ["-v", "-e", "-p", "-d"],
+    correct: 2,
+    explanation: "-p HOST:CONTAINER publishes a port.",
+  },
+  {
+    question: "What does a multi-stage build mainly reduce?",
+    options: ["Build time only", "Final image size", "Number of containers", "Network latency"],
+    correctIndex: 1,
+  },
+]);
+
+let n = 0;
+function show() {
+  const q = quizQuestions[n];
+  document.getElementById('prog').textContent = `Question ${n + 1} / ${quizQuestions.length}`;
+  document.getElementById('question').textContent = q.question;
+  document.getElementById('exp').textContent = '';
+  const right = q.correct ?? q.correctIndex ?? 'ABCD'.indexOf(q.answer);
+  const box = document.getElementById('options');
+  box.innerHTML = '';
+  q.options.forEach((o, k) => {
+    const b = document.createElement('button');
+    b.className = 'opt'; b.textContent = o;
+    b.onclick = () => {
+      b.classList.add(k === right ? 'right' : 'wrong');
+      box.children[right].classList.add('right');
+      if (q.explanation) document.getElementById('exp').textContent = '💡 ' + q.explanation;
+    };
+    box.appendChild(b);
+  });
+}
+document.getElementById('nextBtn').onclick = () => { n = (n + 1) % quizQuestions.length; show(); };
+show();
+</script>
+</body>
+</html>
