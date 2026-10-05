@@ -4,7 +4,7 @@ set -euo pipefail
 APP=flashcard-viewer
 DATA="${XDG_DATA_HOME:-$HOME/.local/share}"
 rm -rf "$DATA/$APP/venv"
-rm -f "$HOME/.local/bin/$APP" "$DATA/applications/$APP.desktop" "$DATA/icons/hicolor/scalable/apps/$APP.svg"
+rm -f "$HOME/.local/bin/$APP" "$DATA/applications/$APP.desktop" "$DATA/icons/hicolor/scalable/apps/$APP.svg" "$DATA/icons/hicolor/512x512/apps/$APP.png"
 command -v update-desktop-database >/dev/null && update-desktop-database -q "$DATA/applications" || true
 if [[ "${1:-}" == "--purge" ]]; then
   rm -rf "$DATA/$APP" "${XDG_CONFIG_HOME:-$HOME/.config}/$APP" "${XDG_CACHE_HOME:-$HOME/.cache}/$APP"

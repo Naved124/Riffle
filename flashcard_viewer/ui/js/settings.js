@@ -545,7 +545,7 @@ function about() {
   return [
     ...header('About'),
     ...(store.platform === 'web' ? [] : [updatesGroup()]),
-    h('div.card', h('div.row.gap', h('img', { src: 'icon.svg', width: 64, height: 64 }),
+    h('div.card', h('div.row.gap', h('img', { src: 'icon.png', width: 64, height: 64 }),
       h('div', h('div.headline-small', 'Flashcard Viewer'), h('div.body-medium.muted', `Version ${store.version} · Material 3 desktop app for HTML flashcard decks`))),
     h('table.info-table', { style: { marginTop: '16px' } },
       h('tr', h('td', 'Settings'), h('td.selectable.mono', store.configDir)),

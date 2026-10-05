@@ -41,9 +41,10 @@ LAUNCH
 chmod +x "$BIN/$APP"
 
 say "Adding the app-menu entry and icon"
-mkdir -p "$DATA/applications" "$DATA/icons/hicolor/scalable/apps"
+mkdir -p "$DATA/applications" "$DATA/icons/hicolor/512x512/apps"
 sed "s|@EXEC@|$BIN/$APP|" "$SRC/packaging/$APP.desktop" > "$DATA/applications/$APP.desktop"
-cp "$SRC/flashcard_viewer/ui/icon.svg" "$DATA/icons/hicolor/scalable/apps/$APP.svg"
+cp "$SRC/flashcard_viewer/ui/icon.png" "$DATA/icons/hicolor/512x512/apps/$APP.png"
+rm -f "$DATA/icons/hicolor/scalable/apps/$APP.svg"  # icon from older versions
 command -v update-desktop-database >/dev/null && update-desktop-database -q "$DATA/applications" || true
 command -v gtk-update-icon-cache >/dev/null && gtk-update-icon-cache -q -t "$DATA/icons/hicolor" 2>/dev/null || true
 

@@ -35,7 +35,7 @@ def _user_tag() -> str:
 
 
 SERVER_NAME = f"flashcard-viewer-{_user_tag()}"
-ICON_PATH = UI_DIR / "icon.svg"
+ICON_PATH = UI_DIR / "icon.png"
 
 
 class Page(QWebEnginePage):
