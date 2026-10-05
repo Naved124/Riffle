@@ -1,6 +1,16 @@
+import base64
 import sys
+from pathlib import Path
 
-from flashcard_viewer import updater
+import pytest
+
+from flashcard_viewer import signing, updater
+
+
+@pytest.fixture(autouse=True)
+def no_release_key(monkeypatch):
+    """Tests start without a release key; the signature tests set one explicitly."""
+    monkeypatch.setattr(signing, "RELEASE_PUBLIC_KEY", "")
 
 RELEASE = {
     "tag_name": "v1.3.0",
@@ -62,8 +72,6 @@ def test_relaunch_waits_for_this_process_to_exit():
 
 # ---- release signatures ----------------------------------------------------------------
 import hashlib  # noqa: E402
-
-import pytest  # noqa: E402
 
 from flashcard_viewer import ed25519  # noqa: E402
 
@@ -167,3 +175,15 @@ def test_download_checks_the_signed_checksum(monkeypatch, tmp_path):
     assert good.read_bytes() == body
     with pytest.raises(OSError):
         updater.download(dict(asset, sha256="00" * 32))
+
+
+def test_committed_release_key_matches_its_pem():
+    text = (Path(updater.__file__).parent / "signing.py").read_text()
+    committed = text.split('RELEASE_PUBLIC_KEY = "', 1)[1].split('"', 1)[0]
+    pem = Path(__file__).resolve().parent.parent / "packaging" / "release-signing-key.pem"
+    if not committed:
+        assert not pem.exists()
+        return
+    assert len(bytes.fromhex(committed)) == 32
+    der = base64.b64decode("".join(line for line in pem.read_text().splitlines() if not line.startswith("-----")))
+    assert der[-32:].hex() == committed
