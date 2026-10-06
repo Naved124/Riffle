@@ -1,0 +1,34 @@
+﻿<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Networking Q&amp;A notes</title>
+<!-- Edge case: UTF-8 BOM + CRLF line endings, filename with spaces and '&'.
+     Cards are plain-text "Q: ... / A: ..." lines in paragraphs, a <pre> block, and a numbered
+     list using "question — answer". Some answers have alternatives ("22 / TCP 22") and
+     parentheticals that should be optional when grading. -->
+<style>
+ body{font:16px/1.6 system-ui,sans-serif;max-width:700px;margin:40px auto;padding:0 16px;background:#0b1020;color:#cfe3ff}
+ h1{color:#7dd3fc} p.qa{background:#111a33;padding:12px 16px;border-radius:10px}
+ pre{background:#111a33;padding:16px;border-radius:10px;white-space:pre-wrap}
+ li{margin:6px 0}
+</style></head>
+<body>
+<h1>🌐 Networking notes</h1>
+<p class="qa">Q: What port does SSH use by default?<br>A: 22</p>
+<p class="qa">Q: What does DNS do?<br>A: Translates domain names into IP addresses</p>
+<p class="qa">Q: Which layer of the OSI model does a router operate at?<br>A: Layer 3 (Network layer)</p>
+<p class="qa">Q: Is UDP connection-oriented?<br>A: No</p>
+<h2>From the terminal</h2>
+<pre>
+Q: Command to show IP addresses on Linux?
+A: ip addr
+
+Q: Command to test reachability of a host?
+A: ping
+</pre>
+<h2>Rapid fire</h2>
+<ol>
+  <li>Default HTTPS port — 443</li>
+  <li>Protocol that assigns IP addresses automatically — DHCP</li>
+  <li>Private IPv4 range starting with 192 — 192.168.0.0/16</li>
+  <li>Loopback address — 127.0.0.1 / localhost</li>
+</ol>
+</body></html>

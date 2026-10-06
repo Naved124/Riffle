@@ -1,0 +1,28 @@
+<!-- Edge case: an HTML *fragment* — no <!DOCTYPE>, <html>, <head> or <body>.
+     Cards are <details>/<summary> pairs plus a second section using .q / .a elements. -->
+<style>
+  .aws { font-family: 'Amazon Ember', Arial, sans-serif; max-width: 720px; margin: 32px auto; color: #232f3e; }
+  .aws h2 { color: #ff9900; border-bottom: 3px solid #ff9900; padding-bottom: 6px; }
+  .aws details { background: #f7f7f7; border-left: 5px solid #ff9900; margin: 10px 0; padding: 14px 18px; border-radius: 6px; }
+  .aws summary { font-weight: bold; cursor: pointer; }
+  .aws details p { margin: 10px 0 0; }
+  .aws .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 8px 0; }
+  .aws .q, .aws .a { padding: 12px; border-radius: 6px; }
+  .aws .q { background: #232f3e; color: white; }
+  .aws .a { background: #ffe8c2; }
+</style>
+<div class="aws">
+  <h2>☁️ AWS Solutions Architect — Core Services</h2>
+  <details><summary>Which service provides object storage with 11 nines of durability?</summary><p>Amazon S3</p></details>
+  <details><summary>What is the maximum size of a single S3 object?</summary><p>5 TB</p></details>
+  <details><summary>Which service is a fully managed NoSQL key-value database?</summary><p>Amazon DynamoDB</p></details>
+  <details><summary>What does a VPC stand for?</summary><p>Virtual Private Cloud</p></details>
+  <details><summary>Which service decouples microservices using message queues?</summary><p>Amazon SQS (Simple Queue Service)</p></details>
+  <details><summary>Security groups are stateful or stateless?</summary><p>Stateful</p></details>
+
+  <h2>Quick pairs</h2>
+  <div class="pair"><div class="q">Network ACLs are…</div><div class="a">Stateless</div></div>
+  <div class="pair"><div class="q">Serverless compute service</div><div class="a">AWS Lambda</div></div>
+  <div class="pair"><div class="q">Content delivery network</div><div class="a">Amazon CloudFront</div></div>
+  <div class="pair"><div class="q">Managed Kubernetes</div><div class="a">Amazon EKS</div></div>
+</div>

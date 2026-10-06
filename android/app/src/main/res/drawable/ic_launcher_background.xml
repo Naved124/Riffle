@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Adaptive-icon background: the same teal gradient as the icon tile (top-left dark to bottom-right lighter). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient android:angle="315" android:startColor="#134E4A" android:centerColor="#115E59" android:endColor="#0F766E" />
+</shape>

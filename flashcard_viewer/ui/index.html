@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#6750a4">
+<title>Riffle</title>
+<link rel="stylesheet" href="vendor/fonts.css">
+<link rel="stylesheet" href="css/app.css">
+<script>
+  // The UI needs a modern Chromium (WebView 111+). Old Android System WebView builds get a hint instead of a blank screen.
+  if (!(window.CSS && CSS.supports && CSS.supports('color', 'color-mix(in srgb, red, blue)'))) {
+    document.addEventListener('DOMContentLoaded', function () {
+      document.body.innerHTML = '<div style="font:16px/1.5 sans-serif;padding:32px;max-width:520px;margin:auto">' +
+        '<h2>Please update Android System WebView</h2><p>Riffle needs a newer version of <b>Android System WebView</b> ' +
+        '(or Chrome). Update it from the Play Store, then reopen the app.</p></div>';
+    });
+  }
+</script>
+<script type="module" src="js/main.js"></script>
+</head>
+<body class="booting">
+<div id="app">
+  <!-- Top app bar / custom title bar -->
+  <header class="titlebar" id="titlebar">
+    <div class="tb-left drag">
+      <md-icon-button id="btn-sidebar" title="Toggle deck list (Ctrl+B)"><md-icon>menu</md-icon></md-icon-button>
+      <img class="app-logo" src="icon.png" alt="">
+      <span class="app-name">Riffle</span>
+    </div>
+    <div class="tb-center drag">
+      <div class="search" id="search">
+        <md-icon>search</md-icon>
+        <input id="search-input" type="search" placeholder="Search decks and cards" autocomplete="off" spellcheck="false">
+        <kbd class="search-kbd">Ctrl K</kbd>
+        <md-icon-button id="search-clear" class="hidden" title="Clear"><md-icon>close</md-icon></md-icon-button>
+      </div>
+    </div>
+    <div class="tb-right drag">
+      <md-icon-button id="btn-mode" title="Toggle light / dark"><md-icon>dark_mode</md-icon></md-icon-button>
+      <div class="win-controls" id="win-controls">
+        <button class="win-btn" id="win-min" title="Minimize"><md-icon>remove</md-icon></button>
+        <button class="win-btn" id="win-max" title="Maximize"><md-icon>crop_square</md-icon></button>
+        <button class="win-btn close" id="win-close" title="Close"><md-icon>close</md-icon></button>
+      </div>
+    </div>
+  </header>
+
+  <div class="shell">
+    <!-- M3 navigation rail -->
+    <nav class="rail" id="rail">
+      <md-fab id="fab-add" size="medium" variant="primary" aria-label="Add decks" title="Add decks (Ctrl+O)"><md-icon slot="icon">add</md-icon></md-fab>
+      <div class="rail-items">
+        <button class="rail-item active" data-page="library"><span class="rail-ind"><md-icon>style</md-icon></span><span class="rail-label">Library</span></button>
+        <button class="rail-item" data-page="quiz"><span class="rail-ind"><md-icon>quiz</md-icon></span><span class="rail-label">Quiz</span></button>
+        <button class="rail-item" data-page="stats"><span class="rail-ind"><md-icon>insights</md-icon></span><span class="rail-label">Stats</span></button>
+        <button class="rail-item" data-page="settings"><span class="rail-ind"><md-icon>settings</md-icon></span><span class="rail-label">Settings</span></button>
+      </div>
+      <div class="rail-bottom">
+        <div class="streak-badge" id="rail-streak" title="Study streak"><md-icon>local_fire_department</md-icon><span>0</span></div>
+      </div>
+    </nav>
+
+    <main class="pages">
+      <!-- LIBRARY -->
+      <section class="page active" id="page-library">
+        <aside class="deck-pane" id="deck-pane">
+          <div class="pane-head">
+            <h2 class="title-large">Library</h2>
+            <span class="pane-count" id="deck-count"></span>
+            <span class="spacer"></span>
+            <md-icon-button id="btn-new-deck" title="Create a deck (Ctrl+N)"><md-icon>library_add</md-icon></md-icon-button>
+            <span style="position:relative">
+              <md-icon-button id="btn-sort" title="Sort"><md-icon>sort</md-icon></md-icon-button>
+              <md-menu id="menu-sort" anchor="btn-sort" positioning="popover">
+                <md-menu-item data-sort="name"><div slot="headline">Name</div><md-icon slot="start">sort_by_alpha</md-icon></md-menu-item>
+                <md-menu-item data-sort="recent"><div slot="headline">Recently opened</div><md-icon slot="start">history</md-icon></md-menu-item>
+                <md-menu-item data-sort="modified"><div slot="headline">Recently modified</div><md-icon slot="start">edit_calendar</md-icon></md-menu-item>
+                <md-menu-item data-sort="studied"><div slot="headline">Most studied</div><md-icon slot="start">timer</md-icon></md-menu-item>
+                <md-menu-item data-sort="progress"><div slot="headline">Least mastered</div><md-icon slot="start">trending_up</md-icon></md-menu-item>
+              </md-menu>
+            </span>
+            <md-icon-button id="btn-rescan" title="Rescan folders"><md-icon>refresh</md-icon></md-icon-button>
+          </div>
+          <md-chip-set class="filter-chips" id="filter-chips">
+            <md-filter-chip label="All" data-filter="all" selected></md-filter-chip>
+            <md-filter-chip label="Favourites" data-filter="fav"></md-filter-chip>
+            <md-filter-chip label="Recent" data-filter="recent"></md-filter-chip>
+            <md-filter-chip label="Weak cards" data-filter="weak"></md-filter-chip>
+          </md-chip-set>
+          <div class="deck-list" id="deck-list" role="listbox"></div>
+          <div class="pane-resizer" id="pane-resizer" title="Drag to resize"></div>
+        </aside>
+
+        <div class="viewer" id="viewer">
+          <div class="viewer-toolbar" id="viewer-toolbar">
+            <md-icon-button id="vt-back" class="mobile-only" title="Back to library"><md-icon>arrow_back</md-icon></md-icon-button>
+            <div class="vt-title">
+              <span class="vt-emoji" id="vt-emoji"></span>
+              <div class="vt-text">
+                <div class="title-medium ellipsis" id="vt-name">No deck open</div>
+                <div class="body-small muted ellipsis" id="vt-sub"></div>
+              </div>
+            </div>
+            <div class="vt-progress hidden" id="vt-progress"><md-icon>flag</md-icon><span id="vt-progress-text"></span></div>
+            <span class="spacer"></span>
+            <md-icon-button id="vt-fav" toggle title="Favourite (Ctrl+D)"><md-icon>star</md-icon><md-icon slot="selected" class="filled">star</md-icon></md-icon-button>
+            <md-filled-tonal-button id="vt-quiz" title="Quiz me (Ctrl+Q)"><md-icon slot="icon">psychology</md-icon>Quiz me</md-filled-tonal-button>
+            <md-icon-button id="vt-cards" title="View / edit cards"><md-icon>edit_note</md-icon></md-icon-button>
+            <div class="zoom-group">
+              <md-icon-button id="vt-zoom-out" title="Zoom out (Ctrl -)"><md-icon>zoom_out</md-icon></md-icon-button>
+              <button class="zoom-label" id="vt-zoom" title="Reset zoom (Ctrl 0)">100%</button>
+              <md-icon-button id="vt-zoom-in" title="Zoom in (Ctrl +)"><md-icon>zoom_in</md-icon></md-icon-button>
+            </div>
+            <md-icon-button id="vt-reload" title="Reload (Ctrl+R)"><md-icon>refresh</md-icon></md-icon-button>
+            <md-icon-button id="vt-focus" title="Focus mode (F11)"><md-icon>fullscreen</md-icon></md-icon-button>
+            <span style="position:relative">
+              <md-icon-button id="vt-more" title="More"><md-icon>more_vert</md-icon></md-icon-button>
+              <md-menu id="menu-more" anchor="vt-more" positioning="popover">
+                <md-menu-item id="mi-cards" class="mobile-only"><div slot="headline">View / edit cards</div><md-icon slot="start">edit_note</md-icon></md-menu-item>
+                <md-menu-item id="mi-zoom-in" class="mobile-only" keep-open><div slot="headline">Zoom in</div><md-icon slot="start">zoom_in</md-icon></md-menu-item>
+                <md-menu-item id="mi-zoom-out" class="mobile-only" keep-open><div slot="headline">Zoom out</div><md-icon slot="start">zoom_out</md-icon></md-menu-item>
+                <md-menu-item id="mi-reload" class="mobile-only"><div slot="headline">Reload</div><md-icon slot="start">refresh</md-icon></md-menu-item>
+                <md-menu-item id="mi-fullscreen" class="mobile-only"><div slot="headline">Full screen</div><md-icon slot="start">fullscreen</md-icon></md-menu-item>
+                <md-menu-item id="mi-rename"><div slot="headline">Rename</div><md-icon slot="start">drive_file_rename_outline</md-icon></md-menu-item>
+                <md-menu-item id="mi-reveal" class="desktop-only"><div slot="headline">Show in folder</div><md-icon slot="start">folder_open</md-icon></md-menu-item>
+                <md-menu-item id="mi-stats"><div slot="headline">Deck statistics</div><md-icon slot="start">insights</md-icon></md-menu-item>
+                <md-menu-item id="mi-info"><div slot="headline">Deck info</div><md-icon slot="start">info</md-icon></md-menu-item>
+                <md-divider></md-divider>
+                <md-menu-item id="mi-delete"><div slot="headline">Move to trash</div><md-icon slot="start">delete</md-icon></md-menu-item>
+              </md-menu>
+            </span>
+          </div>
+          <div class="viewer-frame-wrap empty" id="frame-wrap">
+            <iframe id="deck-frame" title="Deck" allow="fullscreen; clipboard-read; clipboard-write; autoplay"></iframe>
+            <div class="viewer-empty" id="viewer-empty">
+              <div class="empty-art"><md-icon>style</md-icon></div>
+              <h2 class="headline-small">Pick a deck to start studying</h2>
+              <p class="body-medium muted">Decks are HTML or React files in your watched folders. Drop files anywhere in this window to add them, or make your own.</p>
+              <div class="row gap wrap" style="justify-content:center">
+                <md-filled-button id="empty-add"><md-icon slot="icon">add</md-icon>Add decks</md-filled-button>
+                <md-filled-tonal-button id="empty-create"><md-icon slot="icon">library_add</md-icon>Create a deck</md-filled-tonal-button>
+                <md-outlined-button id="empty-folder" class="desktop-only"><md-icon slot="icon">folder_open</md-icon>Open decks folder</md-outlined-button>
+              </div>
+            </div>
+            <div class="frame-loading hidden" id="frame-loading"><md-circular-progress indeterminate></md-circular-progress></div>
+          </div>
+          <div class="focus-exit" id="focus-exit"><md-filled-tonal-button id="btn-focus-exit"><md-icon slot="icon">fullscreen_exit</md-icon>Exit focus</md-filled-tonal-button></div>
+        </div>
+      </section>
+
+      <!-- QUIZ -->
+      <section class="page" id="page-quiz"><div class="page-scroll" id="quiz-root"></div></section>
+
+      <!-- STATS -->
+      <section class="page" id="page-stats"><div class="page-scroll" id="stats-root"></div></section>
+
+      <!-- SETTINGS -->
+      <section class="page" id="page-settings">
+        <div class="settings">
+          <nav class="settings-nav" id="settings-nav"></nav>
+          <div class="settings-body page-scroll" id="settings-body"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- window resize edges for the frameless window -->
+  <div class="rz rz-top" data-edge="top"></div><div class="rz rz-bottom" data-edge="bottom"></div>
+  <div class="rz rz-left" data-edge="left"></div><div class="rz rz-right" data-edge="right"></div>
+  <div class="rz rz-tl" data-edge="top-left"></div><div class="rz rz-tr" data-edge="top-right"></div>
+  <div class="rz rz-bl" data-edge="bottom-left"></div><div class="rz rz-br" data-edge="bottom-right"></div>
+
+  <div class="drop-overlay" id="drop-overlay">
+    <div class="drop-card"><md-icon>upload_file</md-icon><div class="headline-small">Drop to add to your library</div>
+      <div class="body-medium muted">.html, .htm, .jsx and .tsx flashcard decks</div></div>
+  </div>
+  <div class="snackbar-host" id="snackbar-host"></div>
+  <div class="tooltip" id="tooltip" role="tooltip"></div>
+  <div id="dialogs"></div>
+</div>
+</body>
+</html>

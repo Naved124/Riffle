@@ -1,0 +1,12 @@
+{
+  "name": "flashcard-viewer-js-tests",
+  "private": true,
+  "type": "module",
+  "description": "Tests for the JavaScript backend used by the Android app (run: npm install && npm test)",
+  "scripts": {
+    "test": "node --test tests/js/*.test.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "^25.0.1"
+  }
+}

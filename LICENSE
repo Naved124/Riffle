@@ -1,0 +1,75 @@
+Riffle License (freeware, all rights reserved)
+
+Copyright (c) 2026 Naved124. All rights reserved.
+
+Riffle (formerly Flashcard Viewer), including its source code, compiled builds, user interface, name
+and icon (together, "the Software"), is owned by Naved124 ("the Author"). The Author is the sole
+maintainer of the Software.
+
+1. What you may do
+
+   You may download the official releases of the Software, free of charge, from the Author's GitHub
+   repository (https://github.com/Naved124/Riffle), and install and use them on any number of your own
+   devices.
+
+2. What you may not do
+
+   Unless the Author has given you written permission, you may not:
+   a. modify, adapt, translate or otherwise change the Software, or make works based on it;
+   b. copy, redistribute, publish, share, upload, sell, rent, lease or sublicense the Software or any
+      part of it, whether changed or not. To give the Software to someone, send them to the official
+      download page instead;
+   c. remove or change any copyright, license or attribution notice in the Software;
+   d. reverse engineer, decompile or disassemble the compiled builds, except where the law allows it
+      regardless of this restriction;
+   e. use the name "Riffle" or the Riffle icon for any other software, or in a way that suggests the
+      Author is involved with or endorses something.
+
+3. Source code
+
+   The source code is published so people can see how the Software works. Being able to read it does
+   not give you any right to use, copy or change it beyond what section 1 allows. Viewing and forking
+   the repository on GitHub is permitted only to the extent GitHub's Terms of Service require; a fork
+   gives you no further rights.
+
+4. Contributions
+
+   The Author is the only maintainer, and code contributions (such as pull requests) are not
+   accepted. You are welcome to report bugs and suggest ideas through the repository's issue tracker.
+   By doing so you agree that the Author may use your suggestions freely, without any obligation to
+   you.
+
+5. Your content
+
+   Flashcard decks and other content that you create or open with the Software belong to you, not to
+   the Author.
+
+6. Third-party components
+
+   The Software includes third-party components (such as Material Web, Material Symbols, React,
+   lucide, Tailwind, KaTeX and several fonts). Each is licensed under its own terms, listed in
+   flashcard_viewer/ui/vendor/THIRD_PARTY_NOTICES.txt. This license does not change or restrict
+   those terms.
+
+7. Earlier versions
+
+   Versions released before this license took effect were published under the MIT License. Copies
+   of those versions remain under the MIT License. This license applies to all later versions.
+
+8. Termination
+
+   Your permission to use the Software ends automatically if you break any term of this license. If
+   that happens, you must stop using the Software and delete your copies of it.
+
+9. No warranty
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+   NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+   NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+   WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+10. Everything else
+
+   All rights not expressly granted in this license are reserved by the Author. For any permission
+   not given here, contact the Author through https://github.com/Naved124.

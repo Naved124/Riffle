@@ -1,0 +1,74 @@
+[
+ [
+  "**bold** and *italic* and ~~gone~~",
+  "bold and italic and gone"
+ ],
+ [
+  "__strong__ and _em_",
+  "strong and em"
+ ],
+ [
+  "snake_case_name and 2*3*4",
+  "snake_case_name and 2*3*4"
+ ],
+ [
+  "`co*de*` stays",
+  "`co*de*` stays"
+ ],
+ [
+  "Price $5 and $10",
+  "Price $5 and $10"
+ ],
+ [
+  "Euler: $e^{i\\pi}+1=0$",
+  "Euler: $e^{i\\pi}+1=0$"
+ ],
+ [
+  "$$\\frac{a}{b}$$",
+  "$$\\frac{a}{b}$$"
+ ],
+ [
+  "inline \\(x_1\\) and \\[y_2\\]",
+  "inline \\(x_1\\) and \\[y_2\\]"
+ ],
+ [
+  "# Heading\n- one\n- two",
+  "Heading\n- one\n- two"
+ ],
+ [
+  "> quoted",
+  "quoted"
+ ],
+ [
+  "![a cat](img:abc123) photo",
+  "a cat photo"
+ ],
+ [
+  "[the docs](https://example.com) here",
+  "the docs here"
+ ],
+ [
+  "[not a link](javascript:alert(1))",
+  "[not a link](javascript:alert(1))"
+ ],
+ [
+  "\\*literal\\* and \\$5",
+  "*literal* and $5"
+ ],
+ [
+  "```python\nprint('hi')\n```",
+  "print('hi')"
+ ],
+ [
+  "  spaced   out  \n\n\n  lines ",
+  "spaced out\nlines"
+ ],
+ [
+  "<b>html</b> stays text",
+  "<b>html</b> stays text"
+ ],
+ [
+  "",
+  ""
+ ]
+]

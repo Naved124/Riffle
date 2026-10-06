@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Study Timer</title>
+<!-- Edge case: a page with NO flashcards at all (a pomodoro timer). It must still render fine,
+     extraction must return zero cards (no false positives from the settings form or the
+     "Work / Break" labels), and the Quiz feature should explain there is nothing to quiz on. -->
+<style>
+  body { margin: 0; height: 100vh; display: grid; place-items: center; background: #fff1f2; font-family: system-ui, sans-serif; color: #881337; }
+  .timer { font-size: 6rem; font-variant-numeric: tabular-nums; font-weight: 700; }
+  .row { display: flex; gap: 10px; justify-content: center; margin-top: 16px; }
+  button { font-size: 1rem; padding: 10px 20px; border: 0; border-radius: 12px; background: #e11d48; color: white; cursor: pointer; }
+  label { display: block; margin-top: 18px; text-align: center; }
+  .mode { text-align: center; text-transform: uppercase; letter-spacing: .2em; }
+</style>
+</head>
+<body>
+  <div>
+    <div class="mode" id="mode">Work</div>
+    <div class="timer" id="t">25:00</div>
+    <div class="row"><button id="start">Start</button><button id="reset">Reset</button></div>
+    <label>Work minutes: <input id="work" type="number" value="25" min="1"></label>
+    <label>Break minutes: <input id="brk" type="number" value="5" min="1"></label>
+  </div>
+<script>
+  let left = 25 * 60, timer = null, working = true;
+  const fmt = s => String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+  const draw = () => { document.getElementById('t').textContent = fmt(left); document.getElementById('mode').textContent = working ? 'Work' : 'Break'; };
+  document.getElementById('start').onclick = () => {
+    if (timer) { clearInterval(timer); timer = null; return; }
+    timer = setInterval(() => {
+      left--;
+      if (left <= 0) { working = !working; left = (working ? +work.value : +brk.value) * 60; }
+      draw();
+    }, 1000);
+  };
+  document.getElementById('reset').onclick = () => { clearInterval(timer); timer = null; working = true; left = +work.value * 60; draw(); };
+  draw();
+</script>
+</body>
+</html>

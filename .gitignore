@@ -1,0 +1,19 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+.pytest_cache/
+tools/vendor-build/node_modules/
+node_modules/
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+
+# Signing keys must never be committed
+*.keystore
+*.jks
+*.p12
+*.p12.base64
