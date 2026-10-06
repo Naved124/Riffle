@@ -8,6 +8,7 @@
 Every release carries SHA256SUMS and SHA256SUMS.sig, an Ed25519 signature made with the project's
 private release key. Once the public key is set in ``signing.py``, an update is only installed when
 that signature is valid and the downloaded file matches its signed checksum.
+* Microsoft Store (MSIX package): the Store installs updates, so the app doesn't check GitHub at all.
 * Anything else (running from a source checkout): report the update and link to the release page.
 """
 
@@ -54,8 +55,23 @@ def is_newer(latest: str, current: str) -> bool:
     return a + (0,) * (width - len(a)) > b + (0,) * (width - len(b))
 
 
+def is_store_package() -> bool:
+    """True when running from an MSIX package, i.e. installed from the Microsoft Store."""
+    if sys.platform != "win32":
+        return False
+    try:
+        import ctypes
+        length = ctypes.c_uint32(0)
+        # ERROR_INSUFFICIENT_BUFFER (122) means there is a package name; 15700 means no package.
+        return ctypes.windll.kernel32.GetCurrentPackageFullName(ctypes.byref(length), None) == 122
+    except (AttributeError, OSError):
+        return False
+
+
 def install_method() -> str:
-    """'installer' (Windows build), 'pip' (Linux install.sh venv) or 'none'."""
+    """'store' (Microsoft Store package), 'installer' (Windows build), 'pip' (Linux install.sh venv) or 'none'."""
+    if is_store_package():
+        return "store"
     if getattr(sys, "frozen", False):
         return "installer" if sys.platform == "win32" else "none"
     in_venv = sys.prefix != getattr(sys, "base_prefix", sys.prefix)

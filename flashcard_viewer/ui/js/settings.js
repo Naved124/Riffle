@@ -508,6 +508,10 @@ function backup() {
 
 function updatesGroup() {
   const g = S().general;
+  if (store.storeInstall) {
+    return group(h('div.s-row', icon('system_update'),
+      h('div.s-text', h('div.t', 'Updates'), h('div.d', 'This copy came from the Microsoft Store, which keeps it up to date.'))));
+  }
   const status = h('div.d', 'Not checked yet');
   const showInfo = (m) => {
     if (m.state === 'error') { status.textContent = m.message; return; }

@@ -187,3 +187,10 @@ def test_committed_release_key_matches_its_pem():
     assert len(bytes.fromhex(committed)) == 32
     der = base64.b64decode("".join(line for line in pem.read_text().splitlines() if not line.startswith("-----")))
     assert der[-32:].hex() == committed
+
+
+def test_store_packages_leave_updates_to_the_store(monkeypatch):
+    assert updater.is_store_package() is False  # not an MSIX package here
+    monkeypatch.setattr(updater, "is_store_package", lambda: True)
+    assert updater.install_method() == "store"
+    assert updater.summarize(RELEASE, "1.0.0")["canInstall"] is False

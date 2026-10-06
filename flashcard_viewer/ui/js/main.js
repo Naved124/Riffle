@@ -271,7 +271,7 @@ async function boot() {
   const init = await call('getInitialState');
   Object.assign(store, {
     settings: init.settings, defaults: init.defaults, systemScheme: init.systemScheme, version: init.version,
-    dataDir: init.dataDir, configDir: init.configDir, platform: init.platform || 'desktop',
+    dataDir: init.dataDir, configDir: init.configDir, platform: init.platform || 'desktop', storeInstall: !!init.storeInstall,
   });
   document.body.classList.add('platform-' + store.platform);
   if (store.platform !== 'desktop') store.settings.window.customTitlebar = false;

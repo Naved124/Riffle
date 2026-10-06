@@ -139,7 +139,7 @@ export async function promptUpdate(info) {
 export function initUpdates() {
   on('updateStatus', handle);
   const g = store.settings.general;
-  if (store.platform === 'web' || !g.checkUpdates || store.settings.network.mode === 'offline') return;
+  if (store.platform === 'web' || store.storeInstall || !g.checkUpdates || store.settings.network.mode === 'offline') return;
   if (Date.now() - (g.lastUpdateCheck || 0) < AUTO_INTERVAL) return;
   setTimeout(async () => {
     const m = await checkForUpdates();

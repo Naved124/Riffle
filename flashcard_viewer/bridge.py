@@ -81,6 +81,7 @@ class Bridge(QObject):
             "pendingOpen": self.ctx.take_pending_open(),
             "maximized": self.window.isMaximized() if self.window else False,
             "platform": "desktop",
+            "storeInstall": updater.install_method() == "store",
         })
 
     @pyqtSlot(str, result=str)
@@ -420,6 +421,9 @@ class Bridge(QObject):
     @pyqtSlot(result=str)
     @_safe
     def checkForUpdate(self) -> str:
+        if updater.install_method() == "store":
+            self._emit_update(state="error", message="Updates for this copy come from the Microsoft Store.")
+            return _j({"started": False})
         if self.settings.data["network"]["mode"] == "offline":
             self._emit_update(state="error", message="Strictly offline mode is on (Settings → Offline & network).")
             return _j({"started": False})
