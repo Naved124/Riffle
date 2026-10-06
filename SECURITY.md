@@ -11,7 +11,14 @@ issue for them. Include the version, the platform and, ideally, a deck file that
 - **Windows and Linux.** Every release has `SHA256SUMS` and `SHA256SUMS.sig`, an Ed25519 signature
   made with the project's private release key. The apps only install an update whose signature
   matches the public key in `flashcard_viewer/signing.py` (also in
-  `packaging/release-signing-key.pem`). See README → *Verifying downloads* to check a download by hand.
+  `packaging/release-signing-key.pem`). To check a download by hand, put `SHA256SUMS` and
+  `SHA256SUMS.sig` next to it and run:
+
+  ```bash
+  openssl pkeyutl -verify -pubin -inkey packaging/release-signing-key.pem -rawin -in SHA256SUMS -sigfile SHA256SUMS.sig
+  sha256sum --check --ignore-missing SHA256SUMS
+  ```
+
 - **Android.** Release APKs are signed with a private key kept in the repository's secrets. Android
   only installs an update signed with the same key as the installed app.
 

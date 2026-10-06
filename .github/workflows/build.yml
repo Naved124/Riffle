@@ -249,4 +249,4 @@ jobs:
             **Linux:** `git clone` the repo and run `./install.sh` (see README).
 
             `SHA256SUMS.sig` is an Ed25519 signature of `SHA256SUMS`; check it with the public key in
-            `packaging/release-signing-key.pem` (see README → Verifying downloads).
+            `packaging/release-signing-key.pem` (see SECURITY.md).
