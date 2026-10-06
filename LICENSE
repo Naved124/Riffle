@@ -1,4 +1,4 @@
-Riffle License (freeware, all rights reserved)
+Riffle License (freeware, free to share, all other rights reserved)
 
 Copyright (c) 2026 Naved124. All rights reserved.
 
@@ -12,13 +12,30 @@ maintainer of the Software.
    repository (https://github.com/Naved124/Riffle), and install and use them on any number of your own
    devices.
 
+1A. Sharing and packaging
+
+   You may share copies of the official releases or the unmodified source code, and package them for
+   software repositories and package managers (for example Nix, the AUR, Flathub or distribution
+   repositories), as long as:
+   a. you do not charge for the Software itself (a fee only to cover the cost of physical media is
+      fine);
+   b. any changes are only those needed to build, install or run it on that platform (such as build
+      scripts, file paths, launchers, desktop entries or dependency versions), and do not change what
+      it does or how it looks;
+   c. you keep this license and every copyright and attribution notice intact;
+   d. it keeps the name "Riffle" and its icon, and you do not imply that the Author made, maintains
+      or endorses your package;
+   e. you tell users where the official source is (https://github.com/Naved124/Riffle).
+
+   This permission does not let you sell the Software, bundle it into a paid product, or show ads to
+   make money from it.
+
 2. What you may not do
 
-   Unless the Author has given you written permission, you may not:
+   Except as section 1A allows, and unless the Author has given you written permission, you may not:
    a. modify, adapt, translate or otherwise change the Software, or make works based on it;
    b. copy, redistribute, publish, share, upload, sell, rent, lease or sublicense the Software or any
-      part of it, whether changed or not. To give the Software to someone, send them to the official
-      download page instead;
+      part of it, whether changed or not;
    c. remove or change any copyright, license or attribution notice in the Software;
    d. reverse engineer, decompile or disassemble the compiled builds, except where the law allows it
       regardless of this restriction;
@@ -28,7 +45,7 @@ maintainer of the Software.
 3. Source code
 
    The source code is published so people can see how the Software works. Being able to read it does
-   not give you any right to use, copy or change it beyond what section 1 allows. Viewing and forking
+   not give you any right to use, copy or change it beyond what sections 1 and 1A allow. Viewing and forking
    the repository on GitHub is permitted only to the extent GitHub's Terms of Service require; a fork
    gives you no further rights.
 

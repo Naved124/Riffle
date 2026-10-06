@@ -55,8 +55,8 @@ Press **Ctrl+/** to see all keyboard shortcuts.
 
 ## License
 
-Riffle is free to download and use, but it is not open source. © 2026 Naved124, all rights reserved. You may not
-modify or redistribute it. See [LICENSE](LICENSE). Bug reports and ideas are welcome in
+Riffle is free to download and use, but it is not open source. © 2026 Naved124. You may share it and package it
+for package managers free of charge, but not sell it or change what it does. See [LICENSE](LICENSE). Bug reports and ideas are welcome in
 [Issues](https://github.com/Naved124/Riffle/issues).
 
 Riffle collects no personal data; see the [privacy policy](PRIVACY.md).

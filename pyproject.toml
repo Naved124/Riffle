@@ -8,7 +8,7 @@ version = "1.0.3"
 description = "A Material 3 Linux desktop app for studying HTML / React flashcard decks, with quizzes and progress tracking."
 readme = "README.md"
 requires-python = ">=3.9"
-license = { text = "LicenseRef-Riffle-Freeware (all rights reserved, see LICENSE)" }
+license = { text = "LicenseRef-Riffle-Freeware (free to share, not to sell or modify, see LICENSE)" }
 dependencies = [
     "PyQt6>=6.6",
     "PyQt6-WebEngine>=6.6",
