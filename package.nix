@@ -6,7 +6,7 @@
 
 python3Packages.buildPythonApplication {
   pname = "flashcard-viewer";
-  version = "1.0.2";
+  version = (lib.importTOML ./pyproject.toml).project.version;
   pyproject = true;
 
   # Only what the build and tests need, so Android/Windows changes don't trigger rebuilds.
