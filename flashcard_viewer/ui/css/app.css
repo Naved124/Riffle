@@ -346,6 +346,9 @@ body.maximized .rz, body.fullscreen .rz, body.native-titlebar .rz { display: non
 .q-type { display: inline-flex; gap: 6px; align-items: center; font: 500 12px var(--font); letter-spacing: .4px; padding: 4px 10px 4px 8px; border-radius: var(--r-s); background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); }
 .q-type md-icon { --md-icon-size: 16px; }
 .q-prompt { font: 400 calc(26px * var(--font-scale))/1.35 var(--font-heading); margin: 0 0 22px; white-space: pre-wrap; user-select: text; overflow-wrap: anywhere; }
+.q-ask { display: flex; align-items: center; gap: 6px; margin: -4px 0 8px; font: 500 calc(14px * var(--font-scale))/1.4 var(--font); color: var(--md-sys-color-primary); }
+.q-ask md-icon { --md-icon-size: 18px; }
+.q-context { margin: 0 0 10px; font: 400 calc(15px * var(--font-scale))/1.45 var(--font); color: var(--md-sys-color-on-surface-variant); white-space: pre-wrap; overflow-wrap: anywhere; }
 .q-prompt code, .q-answer code { font-family: var(--font-mono); background: var(--md-sys-color-surface-container-highest); padding: 1px 6px; border-radius: 6px; font-size: .9em; }
 .q-statement { padding: 16px 20px; border-radius: var(--r-l); background: var(--md-sys-color-surface-container-highest); margin-bottom: 18px; font: 400 calc(18px * var(--font-scale))/1.5 var(--font); white-space: pre-wrap; }
 .q-statement .label-medium { display: block; color: var(--md-sys-color-on-surface-variant); margin-bottom: 4px; }

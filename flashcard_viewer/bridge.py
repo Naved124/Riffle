@@ -296,7 +296,8 @@ class Bridge(QObject):
         weak = [w["key"] for w in self.stats.weak_cards(deck_id)] if qs.get("weakFirst", True) or opts.get("onlyWeak") else []
         types = [t for t, on in qs["types"].items() if on]
         questions = build_quiz(cards, count=int(opts.get("count", qs["questions"])), types=types, weak_keys=weak,
-                               only_weak=bool(opts.get("onlyWeak")), shuffle=qs.get("shuffle", True))
+                               only_weak=bool(opts.get("onlyWeak")), shuffle=qs.get("shuffle", True),
+                               vary=bool(qs.get("vary", True)))
         return _j({"questions": questions, "cardCount": len(cards)})
 
     @pyqtSlot(str, str, result=str)

@@ -59,3 +59,48 @@ test('grade responses', () => {
   assert.equal(gradeResponse({ type: 'tf', truth: false, answer: 'x' }, false).verdict, 'correct');
   assert.equal(gradeResponse({ type: 'typed', answer: 'The mitochondria' }, 'mitochondria').verdict, 'correct');
 });
+
+// Mirrors the varied-question tests in tests/test_quiz.py.
+const SAMPLES = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'samples');
+test('varied questions stay on the card', () => {
+  const styles = {};
+  for (const name of ['02-biology-js-array.html', '13-deck-editor-chemistry.html', '03-spanish-vocab-react.jsx', '01-linux-commands-flip.html', '11-docker-mcq-quiz.html']) {
+    const cards = extractCards(readFileSync(join(SAMPLES, name), 'utf8'), name).cards;
+    for (let seed = 0; seed < 25; seed++) {
+      for (const q of buildQuiz(cards, { count: 0, seed, vary: true })) {
+        const card = cards.find((c) => c.key === q.key);
+        assert.equal(q.front, card.front);
+        if (q.type === 'mc') {
+          assert.equal(q.choices[q.correctIndex], q.answer);
+          assert.ok(q.choices.length >= 3 && new Set(q.choices.map((c) => c.toLowerCase())).size === q.choices.length);
+        }
+        const style = q.style || 'normal';
+        styles[style] = (styles[style] || 0) + 1;
+        if (style === 'reverse') {
+          assert.equal(q.prompt, card.back); assert.equal(q.answer, card.front);
+          if (q.type === 'typed') assert.ok(!card.front.includes('?'));
+        } else if (style === 'cloze') {
+          assert.ok(q.prompt.includes('_____') && ['mc', 'typed'].includes(q.type));
+          assert.ok([card.back, card.explanation].includes(q.prompt.replaceAll('_____', q.answer)));
+          assert.equal(q.context, card.front);
+        } else if (style === 'explain') {
+          assert.equal(q.prompt, card.explanation); assert.equal(q.answer, card.back);
+        } else {
+          assert.equal(q.prompt, card.front); assert.equal(q.answer, card.back);
+        }
+      }
+    }
+  }
+  assert.deepEqual(Object.keys(styles).sort(), ['cloze', 'explain', 'normal', 'reverse']);
+  assert.ok(styles.normal > Math.max(styles.reverse, styles.cloze, styles.explain));
+});
+
+test('vary off asks cards as written; enabled types are respected', () => {
+  const name = '02-biology-js-array.html';
+  const cards = extractCards(readFileSync(join(SAMPLES, name), 'utf8'), name).cards;
+  for (let seed = 0; seed < 20; seed++) {
+    for (const q of buildQuiz(cards, { count: 0, seed })) assert.ok(!q.style && q.prompt === q.front);
+    for (const q of buildQuiz(cards, { count: 0, seed, vary: true, types: ['tf'] })) assert.equal(q.type, 'tf');
+    for (const q of buildQuiz(cards, { count: 0, seed, vary: true, types: ['typed'] })) assert.equal(q.type, 'typed');
+  }
+});

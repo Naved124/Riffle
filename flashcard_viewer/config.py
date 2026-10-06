@@ -88,6 +88,7 @@ DEFAULTS: dict = {
         "threshold": 0.75,
         "stripAccents": True,
         "shuffle": True,
+        "vary": True,                # also ask cards backwards, as fill-in-the-blank or from the explanation
         "timer": 0,                  # seconds per question, 0 = off
         "sounds": True,
         "showExplanations": True,

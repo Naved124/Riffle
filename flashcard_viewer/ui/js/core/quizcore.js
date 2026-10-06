@@ -2,6 +2,25 @@
 import { booleanValue, grade, normalize } from './similarity.js';
 
 const TYPES = ['typed', 'mc', 'tf'];
+const STYLE_WEIGHTS = { normal: 0.5, reverse: 0.2, cloze: 0.2, explain: 0.1 };
+export const BLANK = '_____';
+const ASK = {
+  reverse: 'Work backwards: which of these has this answer?',
+  'reverse-typed': 'Work backwards: what is on the front of this card?',
+  cloze: 'Fill in the blank',
+  explain: 'Which answer goes with this explanation?',
+};
+const STOP = new Set(`
+  about above after again against also although among another because been before being below between both
+  cannot could does doing down during each either every from further have having here into itself just like
+  made make makes many more most much must only other ours over same should since some such than that their
+  theirs them then there these they this those though through thus under until upon very were what when where
+  which while whom whose will with within without would your yours
+  across always around called usually often never include includes including known mainly mostly plus minus
+  something thing things using used uses kind kinds type types part parts`.split(/\s+/).filter(Boolean));
+const WORD_RX = /\p{L}[\p{L}\p{M}]*(?:['’-]\p{L}[\p{L}\p{M}]*)*/gu;
+// Maths, code, tags and links are never blanked (or counted as words).
+const SKIP_RX = /\$\$[\s\S]+?\$\$|\$[^$\n]+\$|`[^`]*`|<[^>]*>|https?:\/\/\S+/g;
 
 // Small seedable PRNG (mulberry32) so tests are deterministic.
 export function makeRng(seed) {
@@ -91,7 +110,133 @@ function chooseType(card, enabled, rng, nd) {
   return entries[0][0];
 }
 
-export function buildQuiz(cards, { count = 10, types = TYPES, weakKeys = [], onlyWeak = false, shuffle = true, seed = null } = {}) {
+// ------------------------------------------------------------------ other ways to ask a card
+// (port of the same section of quiz.py)
+const nWords = (s) => String(s || '').split(/\s+/).filter(Boolean).length;
+const isUpper = (w) => w === w.toUpperCase() && w !== w.toLowerCase();
+const words = (text) => [...String(text || '').replace(SKIP_RX, (m) => ' '.repeat(m.length)).matchAll(WORD_RX)];
+const contentWords = (text) => new Set(words(text).map((m) => m[0]).filter((w) => w.length >= 4 && !STOP.has(w.toLowerCase())).map((w) => w.toLowerCase()));
+
+function cloze(card, df, rng) {
+  const frontWords = contentWords(card.front);
+  for (const source of [card.back, card.explanation || '']) {
+    if (nWords(source) < 5) continue;
+    const cands = new Map();
+    for (const m of words(source)) {
+      const w = m[0], f = w.toLowerCase();
+      if (w.length < 5 || STOP.has(f) || frontWords.has(f) || cands.has(f)) continue;
+      cands.set(f, w);
+    }
+    if (!cands.size) continue;
+    const ranked = [...cands.keys()].map((f) => [df.get(f) || 0, -f.length, rng(), f]).sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2]).map((x) => x[3]);
+    const word = cands.get(ranked.length > 1 && rng() < 0.3 ? ranked[1] : ranked[0]); // mostly the best word
+    // Blank every occurrence, so a second one doesn't give the answer away.
+    let out = '', last = 0;
+    for (const m of words(source)) {
+      if (m[0].toLowerCase() === word.toLowerCase()) { out += source.slice(last, m.index) + BLANK; last = m.index + m[0].length; }
+    }
+    return [out + source.slice(last), word, source];
+  }
+  return null;
+}
+
+// Match a distractor's capitalisation to the answer's, so case doesn't give the answer away.
+function shapeLike(word, like) {
+  if (isUpper(word) || isUpper(like)) return word;
+  return /^\p{Lu}/u.test(like) ? word[0].toUpperCase() + word.slice(1) : word.toLowerCase();
+}
+
+function clozeDistractors(word, source, vocab, rng, k = 3) {
+  const ans = word.toLowerCase();
+  const used = contentWords(source);
+  const scored = [];
+  for (const [f, w] of vocab) {
+    if (used.has(f) || f.slice(0, 5) === ans.slice(0, 5)) continue;
+    const score = -Math.abs(f.length - ans.length) / 3 + (isUpper(w) === isUpper(word) ? 1 : 0);
+    scored.push([score + rng() * 0.75, shapeLike(w, word)]);
+  }
+  scored.sort((x, y) => y[0] - x[0]);
+  return rng.shuffle(scored.slice(0, k + 2).map((x) => x[1])).slice(0, k);
+}
+
+function frontDistractors(card, pool, rng, k = 3) {
+  const seen = new Set([normalize(card.front)]);
+  const scored = [];
+  for (const other of pool) {
+    const nf = normalize(other.front);
+    if (!nf || seen.has(nf)) continue;
+    seen.add(nf);
+    let score = other.category && other.category === card.category ? 1 : 0;
+    score -= Math.abs(Math.log((other.front.length + 5) / (card.front.length + 5)));
+    scored.push([score + rng() * 0.75, other.front]);
+  }
+  scored.sort((x, y) => y[0] - x[0]);
+  return rng.shuffle(scored.slice(0, k + 2).map((x) => x[1])).slice(0, k);
+}
+
+function pick(weights, rng) {
+  const entries = Object.entries(weights);
+  let r = rng() * entries.reduce((s, [, v]) => s + v, 0);
+  for (const [t, v] of entries) { r -= v; if (r <= 0) return t; }
+  return entries[0][0];
+}
+
+// Ask `card` another way, or null to ask it normally.
+function varied(card, pool, enabled, rng, ctx) {
+  const kind = answerKind(card.back);
+  const expl = card.explanation || '';
+  const options = { normal: STYLE_WEIGHTS.normal };
+  const askable = enabled.has('mc') || enabled.has('typed');
+  if (kind !== 'boolean' && ctx.backs.get(normalize(card.back)) === 1 && askable) options.reverse = STYLE_WEIGHTS.reverse;
+  if (askable && (nWords(card.back) >= 5 || nWords(expl) >= 5)) options.cloze = STYLE_WEIGHTS.cloze;
+  if (kind !== 'boolean' && nWords(expl) >= 4) {
+    const backWords = contentWords(card.back);
+    if (card.back.length >= 2) backWords.add(normalize(card.back));
+    const ne = normalize(expl);
+    if (![...backWords].some((w) => ne.includes(w))) options.explain = STYLE_WEIGHTS.explain;
+  }
+  const style = pick(options, rng);
+  if (style === 'normal') return null;
+
+  const q = { style, front: card.front, hint: card.hint || '', category: card.category || '', explanation: expl };
+  if (style === 'reverse') {
+    const ds = frontDistractors(card, pool, rng);
+    const w = {};
+    if (enabled.has('mc') && ds.length >= 2) w.mc = 0.7;
+    if (enabled.has('typed') && answerKind(card.front) === 'short' && !card.front.includes('?')) w.typed = 0.3;
+    if (!Object.keys(w).length) return null;
+    const type = pick(w, rng);
+    Object.assign(q, { type, prompt: card.back, answer: card.front, ask: ASK[type === 'mc' ? 'reverse' : 'reverse-typed'] });
+    if (type === 'mc') {
+      q.choices = rng.shuffle(ds.slice(0, 3).concat([card.front]));
+      q.correctIndex = q.choices.indexOf(card.front);
+    }
+    return q;
+  }
+  if (style === 'cloze') {
+    const made = cloze(card, ctx.df, rng);
+    if (!made) return null;
+    const [sentence, word, source] = made;
+    const ds = clozeDistractors(word, source, ctx.vocab, rng);
+    const w = {};
+    if (enabled.has('typed')) w.typed = 0.6;
+    if (enabled.has('mc') && ds.length >= 3) w.mc = 0.4;
+    if (!Object.keys(w).length) return null;
+    const type = pick(w, rng);
+    // The card's question stays visible as context; the full sentence is shown after answering.
+    Object.assign(q, { type, prompt: sentence, answer: word, ask: ASK.cloze, context: card.front,
+      explanation: source === expl ? source : [source, expl].filter(Boolean).join(' ') });
+    if (type === 'mc') {
+      q.choices = rng.shuffle(ds.slice(0, 3).concat([word]));
+      q.correctIndex = q.choices.indexOf(word);
+    }
+    return q;
+  }
+  // explain: the explanation is the clue; the card's question is shown after answering.
+  return Object.assign(q, { prompt: expl, answer: card.back, ask: ASK.explain, explanation: card.front });
+}
+
+export function buildQuiz(cards, { count = 10, types = TYPES, weakKeys = [], onlyWeak = false, shuffle = true, seed = null, vary = false } = {}) {
   const rng = makeRng(seed);
   const enabled = new Set(types.filter((t) => TYPES.includes(t)));
   if (!enabled.size) enabled.add('typed');
@@ -112,10 +257,29 @@ export function buildQuiz(cards, { count = 10, types = TYPES, weakKeys = [], onl
   }
   if (count && count > 0) chosen = chosen.slice(0, count);
 
+  let ctx = null;
+  if (vary) {
+    ctx = { backs: new Map(), df: new Map(), vocab: new Map() };
+    for (const c of pool) {
+      const nb = normalize(c.back);
+      ctx.backs.set(nb, (ctx.backs.get(nb) || 0) + 1);
+      for (const text of [c.front, c.back, c.explanation || '']) {
+        for (const m of words(text)) {
+          const w = m[0];
+          if (w.length >= 4 && !STOP.has(w.toLowerCase()) && !ctx.vocab.has(w.toLowerCase())) ctx.vocab.set(w.toLowerCase(), w);
+        }
+      }
+      for (const f of contentWords(`${c.front} ${c.back} ${c.explanation || ''}`)) ctx.df.set(f, (ctx.df.get(f) || 0) + 1);
+    }
+  }
+
   return chosen.map((card, i) => {
     const ds = distractors(card, pool, rng, 3);
+    const v = vary ? varied(card, pool, enabled, rng, ctx) : null;
+    if (v && v.type) return { id: i, key: card.key, ...v };
     const type = chooseType(card, enabled, rng, ds.length);
-    const q = { id: i, key: card.key, type, prompt: card.front, answer: card.back, hint: card.hint || '', explanation: card.explanation || '', category: card.category || '' };
+    const q = { id: i, key: card.key, front: card.front, type, prompt: card.front, answer: card.back, hint: card.hint || '', explanation: card.explanation || '', category: card.category || '' };
+    if (v) Object.assign(q, v); // "explain": same answer and question types as usual, different clue
     if (type === 'mc') {
       const opts = rng.shuffle(ds.slice(0, 3).concat([card.back]));
       q.choices = opts;

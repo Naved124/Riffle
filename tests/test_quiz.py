@@ -77,3 +77,75 @@ def test_grade_response():
     assert grade_response(tf, "true")["verdict"] == "wrong"
     typed = {"type": "typed", "answer": "The mitochondria"}
     assert grade_response(typed, "mitochondria")["verdict"] == "correct"
+
+
+def _check_varied(q, cards):
+    card = next(c for c in cards if c.key == q["key"])
+    assert q["front"] == card.front
+    if q["type"] == "mc":
+        assert q["choices"][q["correctIndex"]] == q["answer"]
+        assert len({c.casefold() for c in q["choices"]}) == len(q["choices"]) >= 3
+    style = q.get("style")
+    if style == "reverse":
+        assert q["prompt"] == card.back and q["answer"] == card.front and q["type"] in ("mc", "typed")
+        if q["type"] == "typed":
+            assert "?" not in card.front
+    elif style == "cloze":
+        assert "_____" in q["prompt"] and q["type"] in ("mc", "typed")
+        assert q["answer"].casefold() not in q["prompt"].casefold().replace("_____", " ")
+        source = q["prompt"].replace("_____", q["answer"])
+        assert source in (card.back, card.explanation)  # only ever the card's own text
+        assert q["context"] == card.front
+    elif style == "explain":
+        assert q["prompt"] == card.explanation and q["answer"] == card.back
+    else:
+        assert style is None and q["prompt"] == card.front and q["answer"] == card.back
+
+
+def test_varied_questions_stay_on_the_card(samples):
+    styles = Counter()
+    for name in ("02-biology-js-array.html", "13-deck-editor-chemistry.html", "03-spanish-vocab-react.jsx",
+                 "01-linux-commands-flip.html", "11-docker-mcq-quiz.html"):
+        cards = _cards(samples, name)
+        for seed in range(25):
+            for q in build_quiz(cards, count=0, seed=seed, vary=True):
+                _check_varied(q, cards)
+                styles[q.get("style", "normal")] += 1
+    assert set(styles) == {"normal", "reverse", "cloze", "explain"}
+    assert styles["normal"] > max(styles["reverse"], styles["cloze"], styles["explain"])
+
+
+def test_vary_off_asks_cards_as_written(samples):
+    cards = _cards(samples, "02-biology-js-array.html")
+    for seed in range(10):
+        for q in build_quiz(cards, count=0, seed=seed):
+            assert "style" not in q and q["prompt"] == q["front"]
+
+
+def test_varied_respects_enabled_types(samples):
+    cards = _cards(samples, "02-biology-js-array.html")
+    for seed in range(20):
+        assert {q["type"] for q in build_quiz(cards, count=0, types=("tf",), seed=seed, vary=True)} == {"tf"}
+        for q in build_quiz(cards, count=0, types=("typed",), seed=seed, vary=True):
+            assert q["type"] == "typed"
+            if q.get("style") == "reverse":
+                assert "?" not in q["answer"]
+
+
+def test_cloze_skips_maths_code_and_question_words():
+    from flashcard_viewer.quiz import _cloze
+    import random
+    card = Card("What does `grep -r` do with $x^2$?", "It searches every directory recursively using `grep -r` and $x^2$ patterns")
+    for seed in range(30):
+        sentence, word, _ = _cloze(card, {}, random.Random(seed))
+        assert word != "grep"  # inside `code`
+        assert "`grep -r`" in sentence and "$x^2$" in sentence
+        assert word.casefold() not in ("what", "does")
+
+
+def test_reverse_needs_a_unique_answer():
+    cards = [Card(f"Question {i}?", "Same answer here") for i in range(4)] + [Card("Odd one?", "Different")]
+    for seed in range(30):
+        for q in build_quiz(cards, count=0, seed=seed, vary=True):
+            if q.get("style") == "reverse":
+                assert q["answer"] == "Odd one?"

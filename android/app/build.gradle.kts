@@ -17,8 +17,8 @@ android {
         applicationId = "io.github.naved124.flashcardviewer"
         minSdk = 26          // Android 8.0
         targetSdk = 34
-        versionCode = 11
-        versionName = "1.0.2"
+        versionCode = 12
+        versionName = "1.0.3"
     }
 
     // Release builds are signed with your private key, passed in by CI from repository secrets

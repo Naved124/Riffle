@@ -356,7 +356,7 @@ export class JsBackend {
     const cards = this.cards(id);
     const weak = qs.weakFirst || opts.onlyWeak ? this.stats.weakCards(id).map((w) => w.key) : [];
     const types = Object.entries(qs.types).filter(([, on]) => on).map(([t]) => t);
-    const questions = buildQuiz(cards, { count: Number(opts.count ?? qs.questions), types, weakKeys: weak, onlyWeak: !!opts.onlyWeak, shuffle: qs.shuffle });
+    const questions = buildQuiz(cards, { count: Number(opts.count ?? qs.questions), types, weakKeys: weak, onlyWeak: !!opts.onlyWeak, shuffle: qs.shuffle, vary: qs.vary !== false });
     return { questions, cardCount: cards.length };
   }
   async gradeAnswer(question, response) {

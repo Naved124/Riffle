@@ -13,6 +13,8 @@ const TYPE_INFO = {
   mc: ['format_list_bulleted', 'Multiple choice'],
   tf: ['rule', 'True or false'],
 };
+// Shown above the question when it is asked another way ("Vary how questions are asked").
+const ASK_ICON = { reverse: 'swap_horiz', cloze: 'edit_note', explain: 'lightbulb' };
 const root = () => $('#quiz-root');
 
 // ------------------------------------------------------------------ picker
@@ -105,7 +107,10 @@ function renderQuestion() {
   const meta = h('div.q-meta', h('span.q-type', icon(ic), label),
     qq.category ? h('span.tag', qq.category) : null, h('span.spacer'),
     qq.hint ? h('md-text-button', { on: { click: showHint } }, h('md-icon', { slot: 'icon' }, 'lightbulb'), 'Hint') : null);
-  const card = h('div.q-card', meta, h('div.q-prompt', { html: richText(qq.prompt) }));
+  const card = h('div.q-card', meta,
+    qq.ask ? h('div.q-ask', icon(ASK_ICON[qq.style] || 'swap_horiz'), qq.ask) : null,
+    qq.context ? h('div.q-context', qq.context) : null,
+    h('div.q-prompt', { html: richText(qq.prompt) }));
   card.append(h('div#hint-slot'));
   if (qq.type === 'typed') {
     const field = h('md-outlined-text-field', { label: 'Your answer', autocomplete: 'off' });
@@ -166,7 +171,7 @@ async function submit(response, timedOut = false) {
   } else {
     grade = await call('gradeAnswer', JSON.stringify(qq), JSON.stringify(response));
   }
-  const result = { key: qq.key, front: qq.prompt, type: qq.type, verdict: grade.verdict, score: grade.score, response, overridden: false };
+  const result = { key: qq.key, front: qq.front || qq.prompt, type: qq.type, verdict: grade.verdict, score: grade.score, response, overridden: false };
   q.results[q.idx] = result;
   if (store.settings.quiz.sounds) playSound(grade.verdict);
 

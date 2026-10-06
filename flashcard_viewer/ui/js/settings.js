@@ -388,6 +388,7 @@ function quiz() {
       row('keyboard', 'Typed answers', 'Best for terms, commands and short facts', typeSw('typed')),
       row('format_list_bulleted', 'Multiple choice', 'Distractors come from other cards in the deck', typeSw('mc')),
       row('rule', 'True / false', 'Shows an answer that may be wrong', typeSw('tf')),
+      row('swap_horiz', 'Vary how questions are asked', 'Sometimes work backwards from the answer, fill in a blank, or start from the explanation', sw(() => q.vary, (v) => set({ vary: v }))),
       row('shuffle', 'Shuffle questions', null, sw(() => q.shuffle, (v) => set({ shuffle: v }))),
       row('priority_high', 'Weak cards first', 'Cards you keep missing are asked first', sw(() => q.weakFirst, (v) => set({ weakFirst: v }))),
     ),
