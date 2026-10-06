@@ -60,6 +60,14 @@ def _day(ts: float) -> date:
     return datetime.fromtimestamp(ts).date()
 
 
+
+def _csv_cell(v):
+    """Card text and deck titles come from decks: stop spreadsheets reading them as formulas."""
+    if isinstance(v, str) and v[:1] in ("=", "+", "-", "@", "\t", "\r"):
+        return "'" + v
+    return v
+
+
 class Stats:
     def __init__(self, path: Path | None = None):
         self.path = path or paths.data_dir() / "stats.db"
@@ -242,10 +250,14 @@ class Stats:
         if replace:
             self.reset_all()
         for t in ("deck_meta", "study_sessions", "quiz_attempts", "card_results"):
-            rows = data.get(t) or []
+            rows = [r for r in (data.get(t) or []) if isinstance(r, dict)]
             if not rows:
                 continue
-            cols = [c for c in rows[0].keys() if c != "id" or t == "deck_meta"]
+            # Backups may come from someone else: only this table's own columns go into the SQL.
+            known = {r[1] for r in self.db.execute(f"PRAGMA table_info({t})")}
+            cols = [c for c in rows[0].keys() if c in known and (c != "id" or t == "deck_meta")]
+            if not cols:
+                continue
             q = f"INSERT OR REPLACE INTO {t}({','.join(cols)}) VALUES({','.join('?' * len(cols))})"
             self.db.executemany(q, [tuple(r.get(c) for c in cols) for r in rows])
         self.db.commit()
@@ -265,7 +277,7 @@ class Stats:
             w.writerow(["datetime", "deck"] + cols[1:])
             for r in self.db.execute(f"SELECT {','.join(cols)} FROM {t} ORDER BY {cols[0]}"):
                 row = list(r)
-                w.writerow([datetime.fromtimestamp(row[0]).isoformat(timespec="seconds"),
-                            titles.get(row[1], row[1])] + row[1:])
+                w.writerow([_csv_cell(v) for v in [datetime.fromtimestamp(row[0]).isoformat(timespec="seconds"),
+                                                   titles.get(row[1], row[1])] + row[1:]])
             out[f"{t}.csv"] = buf.getvalue()
         return out

@@ -277,6 +277,11 @@ function quizPrompt(text) {
   });
 }
 
+// A deck may only make the app act (open a link, run a shortcut) right after the user clicked or
+// pressed a key in it: that activation reaches this page too, so a deck can't do it on its own.
+const userActed = () => !navigator.userActivation || navigator.userActivation.isActive;
+let lastLinkOpened = 0;
+
 // Messages from the deck helper inside the iframe.
 function onFrameMessage(e) {
   const d = e.data;
@@ -305,13 +310,16 @@ function onFrameMessage(e) {
       markActivity();
       break;
     case 'shortcut':
-      emit({ type: 'shortcut', combo: d.combo });
+      if (userActed()) emit({ type: 'shortcut', combo: String(d.combo || '') });
       break;
     case 'dragenter':
       emit({ type: 'dragenter' });
       break;
     case 'open-link':
-      fire('openExternal', String(d.url || ''));
+      if (userActed() && Date.now() - lastLinkOpened > 1000) {
+        lastLinkOpened = Date.now();
+        fire('openExternal', String(d.url || ''));
+      }
       break;
     default:
   }

@@ -141,6 +141,7 @@ class AppContext(QObject):
         s.setAttribute(A.FullScreenSupportEnabled, True)
         s.setAttribute(A.ScrollAnimatorEnabled, True)
         s.setAttribute(A.PlaybackRequiresUserGesture, False)
+        s.setAttribute(A.JavascriptCanOpenWindows, False)  # pop-ups (opened in the browser) need a click
 
         self.window = MainWindow(self)
         self.view = QWebEngineView(self.window)

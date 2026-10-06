@@ -169,8 +169,8 @@ def download(asset: dict, progress=lambda f: None, timeout: float = 30) -> Path:
     url = asset["url"]
     if not url.startswith(DOWNLOAD_PREFIX):
         raise ValueError("refusing to download from an unexpected address")
-    out = Path(tempfile.gettempdir()) / "flashcard-viewer-update" / asset["name"]
-    out.parent.mkdir(parents=True, exist_ok=True)
+    # A new private folder (only this user can open it), so nobody else can swap the file.
+    out = Path(tempfile.mkdtemp(prefix="riffle-update-")) / Path(asset["name"]).name
     h = hashlib.sha256()
     done = 0
     with _open(url, timeout) as r, open(out, "wb") as f:

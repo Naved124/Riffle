@@ -386,12 +386,15 @@ public class MainActivity extends Activity {
                 Uri u = request.getUrl();
                 String scheme = u.getScheme();
                 if (HOST.equals(u.getHost())) return serveAsset(u.getPath());
-                if (!"GET".equalsIgnoreCase(request.getMethod()) || request.isForMainFrame()) return null;
+                if (request.isForMainFrame()) return null;
+                if (!"http".equals(scheme) && !"https".equals(scheme) && !"ws".equals(scheme) && !"wss".equals(scheme)) return null;
+                // Nothing in the app needs this phone or the local network, and decks must not reach it
+                // (a router page, a local service), not even with requests whose answer they can't read.
+                // Host names are resolved, so a public-looking name pointing at a private address counts too.
+                if (!isPublicHost(u.getHost()) || !resolvesPublic(u.getHost())) return forbidden();
+                if (!"GET".equalsIgnoreCase(request.getMethod())) return null;
                 if (!"http".equals(scheme) && !"https".equals(scheme)) return null;
                 if ("api.github.com".equals(u.getHost())) return null; // update checks must never be served from the cache
-                // Never proxy this phone or the local network: the WebView then loads it itself, under
-                // normal cross-origin rules, so a deck can't read a router or local service through us.
-                if (!isPublicHost(u.getHost())) return null;
                 return serveCached(u.toString());
             } catch (Exception e) {
                 // Never let a bad request take the app down; the WebView falls back to a normal fetch.
@@ -502,6 +505,33 @@ public class MainActivity extends Activity {
         }
     }
 
+    private static WebResourceResponse forbidden() {
+        return new WebResourceResponse("text/plain", "utf-8", 403, "Forbidden", corsHeaders(false),
+                new ByteArrayInputStream(new byte[0]));
+    }
+
+    private static final Map<String, long[]> DNS_CACHE = new java.util.concurrent.ConcurrentHashMap<>(); // host -> {time, public?}
+
+    /** True when every address a host name resolves to is public (cached for a few minutes). Runs on the
+     *  WebView's network thread, never the UI thread. */
+    static boolean resolvesPublic(String host) {
+        if (host == null) return false;
+        String h = host.toLowerCase(Locale.ROOT);
+        long now = System.currentTimeMillis();
+        long[] hit = DNS_CACHE.get(h);
+        if (hit != null && now - hit[0] < 300_000) return hit[1] == 1;
+        boolean ok;
+        try {
+            InetAddress[] all = InetAddress.getAllByName(h);
+            ok = all.length > 0;
+            for (InetAddress a : all) ok &= isPublicIp(a.getHostAddress());
+        } catch (java.net.UnknownHostException e) {
+            ok = true; // unresolvable: the request fails anyway
+        }
+        DNS_CACHE.put(h, new long[]{now, ok ? 1 : 0});
+        return ok;
+    }
+
     private static WebResourceResponse notFound() {
         return new WebResourceResponse("text/plain", "utf-8", 404, "Not Found", corsHeaders(),
                 new ByteArrayInputStream(new byte[0]));
@@ -544,7 +574,7 @@ public class MainActivity extends Activity {
             if (!userAgent.isEmpty()) c.setRequestProperty("User-Agent", userAgent);
             int code = c.getResponseCode();
             if (code >= 400) return null;
-            if (!isPublicHost(c.getURL().getHost())) return null; // redirected onto the local network
+            if (!isPublicHost(c.getURL().getHost()) || !resolvesPublic(c.getURL().getHost())) return forbidden(); // redirected onto the local network
             // Mirror the origin's CORS policy, like a browser would.
             String acao = c.getHeaderField("Access-Control-Allow-Origin");
             boolean cors = acao != null && !acao.trim().isEmpty();

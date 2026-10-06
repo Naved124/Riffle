@@ -31,8 +31,13 @@ Flashcard decks are HTML and JavaScript from anywhere, so the apps treat them as
 - A deck can load only ordinary web assets (images, styles, scripts, fonts, media) from its own folder,
   never hidden files. A deck opened from outside your deck library (for example with "Open with" from
   Downloads) can load none.
-- The offline CDN cache never fetches from this device or the local network, and lets a deck read a
-  response only when the original server allows cross-origin reads.
+- A deck can't send any request to this device or the local network (a router, a NAS, a local
+  service), directly or through the offline CDN cache. Host names are resolved first, so a public
+  name that points at a private address is refused too.
+- The offline CDN cache lets a deck read a response only when the original server allows cross-origin
+  reads.
+- A deck can only make the app open a link or run a shortcut right after you click or press a key in
+  it, and it can't open pop-ups on its own.
 - Decks made with the deck editor are no exception. Their cards are shown as text (the Markdown renderer
   escapes everything; links can only be `http(s):` or `mailto:`, images only ones embedded in the deck or
   `https:` URLs), the editor's live preview runs in a sandboxed frame, and the app only overwrites a deck

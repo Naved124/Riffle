@@ -99,3 +99,22 @@ def test_deck_id_stable(tmp_path):
     assert deck_id_for(f) == deck_id_for(str(f))
     assert guess_title("<html><title> Hi &amp; bye </title>", "x.html") == "Hi & bye"
     assert guess_title("<p>none</p>", "02-my_deck.html") == "My deck"
+
+
+def test_restoring_stats_only_uses_known_columns(tmp_path):
+    s = Stats(tmp_path / "s.db")
+    evil = {"quiz_attempts": [{"deck_id": "d", "finished_at": 1.0, "total": 1, "correct": 1, "close": 0, "wrong": 0,
+                               "score": 1.0, "seconds) VALUES(1,1,1,1,1,1,1,1); --": 1}]}
+    s.load(evil)
+    assert s.deck_summary("d")["quizzes"] == 1
+    s.load({"card_results": [{"nonsense": 1}], "deck_meta": ["not a row"]})
+    assert s.deck_summary("d")["quizzes"] == 0
+
+
+def test_csv_export_neutralises_formulas(tmp_path):
+    s = Stats(tmp_path / "s.db")
+    s.record_quiz("d", [{"key": "a", "front": '=HYPERLINK("http://evil","x")', "verdict": "wrong"},
+                        {"key": "b", "front": "-2+3", "verdict": "correct"}, {"key": "c", "front": "plain", "verdict": "close"}])
+    text = s.export_csv()["card_results.csv"]
+    assert "'=HYPERLINK" in text and "'-2+3" in text and ",plain," in text
+    assert "\n=" not in text and ",=" not in text

@@ -34,7 +34,7 @@ from PyQt6.QtWebEngineCore import (QWebEngineUrlRequestInfo, QWebEngineUrlReques
                                    QWebEngineUrlRequestJob, QWebEngineUrlScheme, QWebEngineUrlSchemeHandler)
 
 from . import paths
-from .netpolicy import is_public_host, sibling_allowed
+from .netpolicy import is_public_host, reaches_public_network, sibling_allowed
 from .render import render_deck
 
 UI_DIR = Path(__file__).resolve().parent / "ui"
@@ -271,7 +271,7 @@ class CdnSchemeHandler(QWebEngineUrlSchemeHandler):
 
     def requestStarted(self, job: QWebEngineUrlRequestJob) -> None:  # noqa: N802
         url = cdn_to_https(job.requestUrl())
-        if not is_public_host(job.requestUrl().host()):
+        if not reaches_public_network(job.requestUrl().host()):
             job.fail(QWebEngineUrlRequestJob.Error.RequestDenied)
             return
         hit = self.cache.get(url)
@@ -330,12 +330,18 @@ class Interceptor(QWebEngineUrlRequestInterceptor):
 
     def interceptRequest(self, info: QWebEngineUrlRequestInfo) -> None:  # noqa: N802
         url = info.requestUrl()
-        if url.scheme() not in ("http", "https"):
+        if url.scheme() not in ("http", "https", "ws", "wss"):
             return
         rt = info.resourceType()
         R = QWebEngineUrlRequestInfo.ResourceType
-        if rt in (R.ResourceTypeMainFrame, R.ResourceTypeSubFrame, R.ResourceTypeNavigationPreloadMainFrame,
-                  R.ResourceTypeNavigationPreloadSubFrame):
-            return  # navigations are handled by the page (opened in the system browser)
+        if rt in (R.ResourceTypeMainFrame, R.ResourceTypeNavigationPreloadMainFrame):
+            return  # the page opens these in the system browser
+        # Nothing in the app needs this machine or the local network, and decks must not reach it
+        # (a router page, a local service), not even with requests whose answer they can't read.
+        if not reaches_public_network(url.host()):
+            info.block(True)
+            return
+        if rt in (R.ResourceTypeSubFrame, R.ResourceTypeNavigationPreloadSubFrame):
+            return  # embedded pages (e.g. a video) follow the network mode of the page
         if self.settings.data["network"]["mode"] == "offline":
             info.block(True)

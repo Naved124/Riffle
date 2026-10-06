@@ -179,7 +179,12 @@ export class Stats {
   resetAll() { this.load({}); }
 
   exportCsv(titles = {}) {
-    const esc = (v) => { const s = String(v ?? ''); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+    // Card text and deck titles come from decks: stop spreadsheets reading them as formulas.
+    const esc = (v) => {
+      let s = String(v ?? '');
+      if (typeof v === 'string' && /^[=+\-@\t\r]/.test(s)) s = "'" + s;
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
     const iso = (ts) => new Date(ts * 1000).toISOString().slice(0, 19);
     const block = (name, cols, rows, tsCol) => [
       `# ${name}`,

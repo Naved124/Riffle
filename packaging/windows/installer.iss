@@ -1,9 +1,9 @@
 ; Inno Setup script — builds Riffle-Setup-<version>.exe from the PyInstaller output.
 ; The app used to be called Flashcard Viewer: the AppId, the .exe name and the ProgId stay the same so
 ; this installer updates an existing install in place, and its old shortcuts are removed below.
-;   iscc /DAppVersion=1.0.0 packaging\windows\installer.iss
+;   iscc /DAppVersion=1.0.1 packaging\windows\installer.iss
 #ifndef AppVersion
-  #define AppVersion "1.0.0"
+  #define AppVersion "1.0.1"
 #endif
 #define AppName "Riffle"
 #define AppExe "FlashcardViewer.exe"

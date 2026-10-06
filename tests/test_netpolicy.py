@@ -53,3 +53,24 @@ def test_backup_size_limit(monkeypatch):
     monkeypatch.setattr(backup, "BACKUP_MAX_BYTES", 10)
     with pytest.raises(ValueError):
         backup.backup_entries(_zip({"stats.json": "x" * 11}))
+
+
+def test_names_pointing_at_private_addresses_are_refused(monkeypatch):
+    from flashcard_viewer import netpolicy
+
+    answers = {"rebind.example.com": "127.0.0.1", "lan.example.com": "192.168.1.20", "cdn.example.com": "93.184.216.34"}
+
+    def fake_getaddrinfo(host, port):
+        if host not in answers:
+            raise OSError("no such host")
+        return [(2, 1, 6, "", (answers[host], 0))]
+
+    monkeypatch.setattr(netpolicy.socket, "getaddrinfo", fake_getaddrinfo)
+    netpolicy._dns_cache.clear()
+    assert not netpolicy.reaches_public_network("rebind.example.com")
+    assert not netpolicy.reaches_public_network("lan.example.com")
+    assert netpolicy.reaches_public_network("cdn.example.com")
+    assert netpolicy.reaches_public_network("8.8.8.8")
+    for host in ("localhost", "127.0.0.1", "10.1.2.3", "[::1]", "router", "nas.local"):
+        assert not netpolicy.reaches_public_network(host)
+    netpolicy._dns_cache.clear()
