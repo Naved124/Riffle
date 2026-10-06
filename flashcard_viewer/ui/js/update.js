@@ -43,7 +43,7 @@ function handle(raw) {
     }
     case 'progress': showProgress(m.progress); break;
     case 'installing': showProgress(1, 'Installing… the app will close and reopen by itself.'); break;
-    case 'permission': showProgress(-1, 'Allow “Install unknown apps” for Flashcard Viewer, then come back.'); break;
+    case 'permission': showProgress(-1, 'Allow “Install unknown apps” for Riffle, then come back.'); break;
     case 'confirm': closeProgress(); break;
     case 'restart':
       closeProgress();
@@ -60,7 +60,7 @@ function showProgress(fraction, text) {
     const label = h('p.body-medium', 'Downloading update…');
     progressDlg = { bar, label, closed: false };
     dialog({
-      headline: 'Updating Flashcard Viewer', icon: 'system_update',
+      headline: 'Updating Riffle', icon: 'system_update',
       content: h('div.col.gap', label, bar),
       actions: [{ label: 'Hide', value: 'hide' }],
       onOpen: (dlg) => { progressDlg.dlg = dlg; },
@@ -83,7 +83,7 @@ function closeProgress() {
 async function askRestart(version) {
   const v = await dialog({
     headline: 'Update installed', icon: 'restart_alt',
-    content: h('p.body-medium', `Flashcard Viewer ${version || ''} is installed. Restart to start using it.`),
+    content: h('p.body-medium', `Riffle ${version || ''} is installed. Restart to start using it.`),
     actions: [{ label: 'Later', value: 'later' }, { label: 'Restart now', value: 'restart', primary: true }],
   });
   if (v === 'restart') fire('restartApp');

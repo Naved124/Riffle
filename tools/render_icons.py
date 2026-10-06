@@ -49,7 +49,7 @@ subprocess.run(["convert", *[str(tmp / f"{s}.png") for s in sizes], str(ROOT / "
 
 # Android: legacy launcher icons, plus the adaptive-icon foreground. That one is 108dp with only
 # the middle ~72dp visible through the launcher's mask (a circle on many phones), so the tile is
-# drawn at ~67dp to keep the lightbulb and cards inside a circle. The gradient background
+# drawn at ~67dp to keep the cards and ring inside a circle. The gradient background
 # (drawable/ic_launcher_background.xml) matches the tile's edges around it.
 res = ROOT / "android/app/src/main/res"
 for name, s in {"mdpi": 48, "hdpi": 72, "xhdpi": 96, "xxhdpi": 144, "xxxhdpi": 192}.items():

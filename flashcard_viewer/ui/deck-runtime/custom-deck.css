@@ -1,5 +1,5 @@
 /* Look of decks made with the deck editor (inlined into each deck file).
- * Inside Flashcard Viewer the deck helper sets the --fv-* variables from the app's theme, font and
+ * Inside Riffle the deck helper sets the --fv-* variables from the app's theme, font and
  * corner settings; opened anywhere else, the fallbacks below follow the browser's light/dark mode. */
 :root {
   --fv-primary: #6750a4; --fv-on-primary: #fff;

@@ -12,5 +12,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "FlashcardViewer"
+rootProject.name = "Riffle"
 include(":app")

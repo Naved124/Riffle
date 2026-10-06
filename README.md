@@ -1,6 +1,8 @@
-# Flashcard Viewer
+<img src="packaging/icons/icon-1024.png" alt="" width="96" align="right">
 
-An app for **Linux, Windows and Android** for studying AI-generated HTML flashcard decks (artifacts),
+# Riffle
+
+*Formerly Flashcard Viewer.* An app for **Linux, Windows and Android** for studying AI-generated HTML flashcard decks (artifacts),
 so you don't need to open them in a browser. It has a Material 3 interface, with popular
 themes, quizzes graded by similarity, and progress tracking.
 
@@ -13,7 +15,7 @@ themes, quizzes graded by similarity, and progress tracking.
   components. React, Tailwind, lucide icons and Babel are bundled, and imports that only exist in the original artifact
   environment, such as shadcn/ui and framer-motion, get lightweight stand-ins.
 - **Watched folders.** Every `.html`, `.htm`, `.jsx` and `.tsx` file in them shows up automatically.
-- **Drag & drop** files onto the window to add them. **“Open with → Flashcard Viewer”** works from your file manager.
+- **Drag & drop** files onto the window to add them. **“Open with → Riffle”** works from your file manager.
 - **Auto-reload** when a deck file changes on disk.
 - **Search** deck names *and* card content, with accent-insensitive matching (“pina” finds “piña”).
 - **Favourites**, recent decks, renaming, and sorting by name, recently opened, recently modified, most studied or least mastered.
@@ -80,17 +82,22 @@ themes, quizzes graded by similarity, and progress tracking.
 
 ## Download
 
-Ready-made builds are attached to each [GitHub release](https://github.com/Naved124/flashcard-viewer/releases/latest):
+Ready-made builds are attached to each [GitHub release](https://github.com/Naved124/Riffle/releases/latest):
 
 | Platform | File | Notes |
 |---|---|---|
-| **Windows 10/11 (64-bit)** | `FlashcardViewer-Setup-<version>.exe` | Normal installer: Start-menu entry, optional desktop icon, optional “Open with” for .html/.htm/.jsx/.tsx. Installs per-user by default (no admin needed). Windows SmartScreen may warn because the installer isn't code-signed: click **More info → Run anyway**. |
-| **Android 8.0+** | `FlashcardViewer-<version>.apk` | Allow “Install unknown apps” for your browser or file manager, then open the APK. Needs an up-to-date **Android System WebView** (from the Play Store). |
+| **Windows 10/11 (64-bit)** | `Riffle-Setup-<version>.exe` | Normal installer: Start-menu entry, optional desktop icon, optional “Open with” for .html/.htm/.jsx/.tsx. Installs per-user by default (no admin needed). Windows SmartScreen may warn because the installer isn't code-signed: click **More info → Run anyway**. |
+| **Android 8.0+** | `Riffle-<version>.apk` | Allow “Install unknown apps” for your browser or file manager, then open the APK. Needs an up-to-date **Android System WebView** (from the Play Store). |
 | **Linux** | from source, see below | `./install.sh` adds an app-menu entry. |
 
 Every push to `main` also builds both packages. You can download them from the **Actions** tab, under the run's *Artifacts*.
 
 ### Updates
+
+> **Coming from Flashcard Viewer?** The app and its GitHub repository were renamed to Riffle, so versions released as
+> Flashcard Viewer can't find the new releases by themselves. Install the latest Riffle release once by hand, over the old
+> app: on Windows the installer updates the existing install and replaces its shortcuts, and on Android it installs as an
+> update. Your decks, settings and stats are kept. After that, updates are automatic again.
 
 Once installed, you never need to come back here: the app checks the latest GitHub release when it starts (at most
 every 6 hours) and asks before changing anything. **Settings → About** has a *Check now* button and an option to turn
@@ -99,7 +106,7 @@ automatic checks off.
 | Platform | What “Update now” does |
 |---|---|
 | Windows | Downloads the new installer, checks its SHA-256, closes the app, updates it in place and reopens it. |
-| Android | Downloads the new APK, checks its SHA-256 and hands it to Android, which asks you to confirm. The first time, Android asks you to allow “Install unknown apps” for Flashcard Viewer. |
+| Android | Downloads the new APK, checks its SHA-256 and hands it to Android, which asks you to confirm. The first time, Android asks you to allow “Install unknown apps” for Riffle. |
 | Linux (`install.sh`) | Upgrades the app inside its virtual environment with pip, then offers to restart. |
 
 Strictly offline mode turns update checks off.
@@ -132,7 +139,7 @@ committed, CI refuses to publish a release it can't sign.
 **Windows publisher name (optional).** The release signature protects updates, but Windows SmartScreen only trusts
 installers signed with a code-signing certificate from a certificate authority. These usually cost money; open-source
 projects can apply for a free one from the SignPath Foundation. If you get one, add it as the `WINDOWS_CERT_PFX_BASE64`
-secret (a base64-encoded `.pfx`) and `WINDOWS_CERT_PASSWORD`, and CI signs `FlashcardViewer.exe` and the installer with it.
+secret (a base64-encoded `.pfx`) and `WINDOWS_CERT_PASSWORD`, and CI signs `FlashcardViewer.exe` (the program file keeps its old name) and the installer with it.
 
 Decks are treated as untrusted: they can't reach the app or other decks, and can only load ordinary
 web assets from their own folder. See [SECURITY.md](SECURITY.md) for details and for reporting problems.
@@ -149,7 +156,7 @@ sha256sum --check --ignore-missing SHA256SUMS
 - The Android app has the same interface, quiz, tracker, themes and settings. Phones get a compact layout with a bottom navigation bar.
 - Decks are stored **inside the app**. You can add them in three ways:
   - with the **+** button, which opens the system file picker
-  - by opening an `.html` file and choosing **Flashcard Viewer**
+  - by opening an `.html` file and choosing **Riffle**
   - by sharing a file to the app
 - **Settings → Backup & reset → Export backup** saves your decks, edits and stats to one `.json` file, which you can restore on another phone.
 - CDN files that decks load (Tailwind, fonts, KaTeX) are cached the first time, so decks also work offline afterwards.
@@ -161,8 +168,8 @@ sha256sum --check --ignore-missing SHA256SUMS
 You need Python 3.9 or newer. The install works on any distro (Ubuntu/Debian/Mint, Fedora, Arch, …), on X11 and Wayland.
 
 ```bash
-git clone https://github.com/Naved124/flashcard-viewer.git
-cd flashcard-viewer
+git clone https://github.com/Naved124/Riffle.git
+cd Riffle
 ./install.sh
 ```
 

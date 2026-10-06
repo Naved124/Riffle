@@ -14,13 +14,13 @@ def no_release_key(monkeypatch):
 
 RELEASE = {
     "tag_name": "v1.3.0",
-    "html_url": "https://github.com/Naved124/flashcard-viewer/releases/tag/v1.3.0",
+    "html_url": "https://github.com/Naved124/Riffle/releases/tag/v1.3.0",
     "body": "**Windows:** run the installer",
     "assets": [
-        {"name": "FlashcardViewer-1.3.0.apk", "size": 10,
-         "browser_download_url": "https://github.com/Naved124/flashcard-viewer/releases/download/v1.3.0/FlashcardViewer-1.3.0.apk"},
-        {"name": "FlashcardViewer-Setup-1.3.0.exe", "size": 20, "digest": "sha256:" + "ab" * 32,
-         "browser_download_url": "https://github.com/Naved124/flashcard-viewer/releases/download/v1.3.0/FlashcardViewer-Setup-1.3.0.exe"},
+        {"name": "Riffle-1.3.0.apk", "size": 10,
+         "browser_download_url": "https://github.com/Naved124/Riffle/releases/download/v1.3.0/Riffle-1.3.0.apk"},
+        {"name": "Riffle-Setup-1.3.0.exe", "size": 20, "digest": "sha256:" + "ab" * 32,
+         "browser_download_url": "https://github.com/Naved124/Riffle/releases/download/v1.3.0/Riffle-Setup-1.3.0.exe"},
     ],
 }
 
@@ -38,7 +38,7 @@ def test_version_comparison():
 def test_windows_build_picks_the_installer_with_its_checksum():
     info = updater.summarize(RELEASE, "1.1.2", "installer")
     assert info["newer"] and info["canInstall"] and info["latest"] == "1.3.0"
-    assert info["asset"]["name"] == "FlashcardViewer-Setup-1.3.0.exe"
+    assert info["asset"]["name"] == "Riffle-Setup-1.3.0.exe"
     assert info["asset"]["sha256"] == "ab" * 32
 
 
@@ -49,7 +49,7 @@ def test_pip_install_needs_no_asset_and_source_checkout_cannot_install():
 
 
 def test_assets_from_other_hosts_are_ignored():
-    rel = dict(RELEASE, assets=[dict(RELEASE["assets"][1], browser_download_url="https://evil.example/FlashcardViewer-Setup-1.3.0.exe")])
+    rel = dict(RELEASE, assets=[dict(RELEASE["assets"][1], browser_download_url="https://evil.example/Riffle-Setup-1.3.0.exe")])
     assert updater.summarize(rel, "1.1.2", "installer")["canInstall"] is False
 
 
@@ -97,13 +97,13 @@ def test_ed25519_matches_openssl(tmp_path):
         pytest.skip("openssl not installed")
     key, msg, sig, pub = (tmp_path / n for n in ("k.pem", "m", "m.sig", "pub.der"))
     subprocess.run(["openssl", "genpkey", "-algorithm", "ed25519", "-out", key], check=True)
-    msg.write_bytes(b"a3f0  FlashcardViewer-Setup-9.9.9.exe\n" * 50)
+    msg.write_bytes(b"a3f0  Riffle-Setup-9.9.9.exe\n" * 50)
     subprocess.run(["openssl", "pkeyutl", "-sign", "-inkey", key, "-rawin", "-in", msg, "-out", sig], check=True)
     subprocess.run(["openssl", "pkey", "-in", key, "-pubout", "-outform", "DER", "-out", pub], check=True)
     assert ed25519.verify(pub.read_bytes()[-32:], msg.read_bytes(), sig.read_bytes())
 
 
-SUMS_TEXT = ("ab" * 32 + "  FlashcardViewer-Setup-1.3.0.exe\n" + "cd" * 32 + " *flashcard_viewer-1.3.0-py3-none-any.whl\n")
+SUMS_TEXT = ("ab" * 32 + "  Riffle-Setup-1.3.0.exe\n" + "cd" * 32 + " *flashcard_viewer-1.3.0-py3-none-any.whl\n")
 SIGNED = dict(RELEASE, assets=RELEASE["assets"] + [
     {"name": n, "size": 1, "browser_download_url": updater.DOWNLOAD_PREFIX + "v1.3.0/" + n}
     for n in ("SHA256SUMS", "SHA256SUMS.sig", "flashcard_viewer-1.3.0-py3-none-any.whl")])
@@ -111,7 +111,7 @@ SIGNED = dict(RELEASE, assets=RELEASE["assets"] + [
 
 def test_parse_sums():
     sums = updater.parse_sums(SUMS_TEXT)
-    assert sums["FlashcardViewer-Setup-1.3.0.exe"] == "ab" * 32
+    assert sums["Riffle-Setup-1.3.0.exe"] == "ab" * 32
     assert sums["flashcard_viewer-1.3.0-py3-none-any.whl"] == "cd" * 32
 
 
@@ -143,16 +143,16 @@ def test_verified_checksum(monkeypatch, tmp_path):
     info = updater.summarize(SIGNED, "1.1.2", "installer")
 
     monkeypatch.setattr(updater, "_fetch_small", _fake_fetch({"SHA256SUMS": msg.read_bytes(), "SHA256SUMS.sig": sig.read_bytes()}))
-    assert updater.verified_checksum(info, "FlashcardViewer-Setup-1.3.0.exe", pk) == "ab" * 32
+    assert updater.verified_checksum(info, "Riffle-Setup-1.3.0.exe", pk) == "ab" * 32
     with pytest.raises(updater.UpdateError):
         updater.verified_checksum(info, "something-else.exe", pk)
     with pytest.raises(updater.UpdateError):  # signed by a different key
-        updater.verified_checksum(info, "FlashcardViewer-Setup-1.3.0.exe", RFC_PK.hex())
+        updater.verified_checksum(info, "Riffle-Setup-1.3.0.exe", RFC_PK.hex())
 
     forged = msg.read_bytes().replace(b"ab" * 32, b"ef" * 32)
     monkeypatch.setattr(updater, "_fetch_small", _fake_fetch({"SHA256SUMS": forged, "SHA256SUMS.sig": sig.read_bytes()}))
     with pytest.raises(updater.UpdateError):
-        updater.verified_checksum(info, "FlashcardViewer-Setup-1.3.0.exe", pk)
+        updater.verified_checksum(info, "Riffle-Setup-1.3.0.exe", pk)
 
 
 def test_download_checks_the_signed_checksum(monkeypatch, tmp_path):

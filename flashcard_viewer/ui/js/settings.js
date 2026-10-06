@@ -282,7 +282,7 @@ function mobileLibrary() {
   const l = S().library;
   const set = (p) => setSettings({ library: p });
   return [
-    ...header('Library', 'Decks you add are stored inside the app, so they work offline. Add them with the + button, or share / open an .html file with Flashcard Viewer from any other app.'),
+    ...header('Library', 'Decks you add are stored inside the app, so they work offline. Add them with the + button, or share / open an .html file with Riffle from any other app.'),
     group(
       row('style', 'Decks in your library', null, h('span.title-medium', String(store.decks.length))),
       h('div.s-row', h('md-filled-tonal-button', { on: { click: () => emit({ type: 'add-files' }) } }, h('md-icon', { slot: 'icon' }, 'add'), 'Add decks')),
@@ -546,7 +546,7 @@ function about() {
     ...header('About'),
     ...(store.platform === 'web' ? [] : [updatesGroup()]),
     h('div.card', h('div.row.gap', h('img', { src: 'icon.png', width: 64, height: 64 }),
-      h('div', h('div.headline-small', 'Flashcard Viewer'), h('div.body-medium.muted', `Version ${store.version} · Material 3 desktop app for HTML flashcard decks`))),
+      h('div', h('div.headline-small', 'Riffle'), h('div.body-medium.muted', `Version ${store.version} · Material 3 app for HTML flashcard decks`))),
     h('table.info-table', { style: { marginTop: '16px' } },
       h('tr', h('td', 'Settings'), h('td.selectable.mono', store.configDir)),
       h('tr', h('td', 'Data & stats'), h('td.selectable.mono', store.dataDir)),

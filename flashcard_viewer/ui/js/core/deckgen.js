@@ -9,7 +9,7 @@
 
 export const FORMAT = 'flashcard-viewer-deck';
 export const FORMAT_VERSION = 1;
-export const GENERATOR = 'Flashcard Viewer deck editor';
+export const GENERATOR = 'Riffle deck editor';
 const DATA_RX = /<script\b[^>]*\bid=["']fv-deck-data["'][^>]*>([\s\S]*?)<\/script\s*>/i;
 export const IMAGE_RX = /^data:image\/(png|jpeg|gif|webp);base64,[A-Za-z0-9+/=]+$/;
 const MAX_CARDS = 5000;

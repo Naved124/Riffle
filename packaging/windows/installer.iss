@@ -1,9 +1,11 @@
-; Inno Setup script — builds FlashcardViewer-Setup-<version>.exe from the PyInstaller output.
+; Inno Setup script — builds Riffle-Setup-<version>.exe from the PyInstaller output.
+; The app used to be called Flashcard Viewer: the AppId, the .exe name and the ProgId stay the same so
+; this installer updates an existing install in place, and its old shortcuts are removed below.
 ;   iscc /DAppVersion=1.2.3 packaging\windows\installer.iss
 #ifndef AppVersion
   #define AppVersion "1.2.3"
 #endif
-#define AppName "Flashcard Viewer"
+#define AppName "Riffle"
 #define AppExe "FlashcardViewer.exe"
 #define ProgId "FlashcardViewer.Deck"
 
@@ -13,17 +15,18 @@ AppName={#AppName}
 AppVersion={#AppVersion}
 AppVerName={#AppName} {#AppVersion}
 AppPublisher=Naved124
-AppPublisherURL=https://github.com/Naved124/flashcard-viewer
-AppSupportURL=https://github.com/Naved124/flashcard-viewer/issues
+AppPublisherURL=https://github.com/Naved124/Riffle
+AppSupportURL=https://github.com/Naved124/Riffle/issues
 DefaultDirName={autopf}\{#AppName}
 DefaultGroupName={#AppName}
+UsePreviousGroup=no
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir=..\..\dist
-OutputBaseFilename=FlashcardViewer-Setup-{#AppVersion}
+OutputBaseFilename=Riffle-Setup-{#AppVersion}
 SetupIconFile=flashcard-viewer.ico
 UninstallDisplayIcon={app}\{#AppExe}
 Compression=lzma2/max
@@ -37,7 +40,14 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
-Name: "openwith"; Description: "Add ""Open with Flashcard Viewer"" for .html, .htm, .jsx and .tsx files"; GroupDescription: "File types:"
+Name: "openwith"; Description: "Add ""Open with Riffle"" for .html, .htm, .jsx and .tsx files"; GroupDescription: "File types:"
+
+[InstallDelete]
+; Shortcuts made by versions named "Flashcard Viewer".
+Type: files; Name: "{autoprograms}\Flashcard Viewer\Flashcard Viewer.lnk"
+Type: files; Name: "{autoprograms}\Flashcard Viewer\Uninstall Flashcard Viewer.lnk"
+Type: dirifempty; Name: "{autoprograms}\Flashcard Viewer"
+Type: files; Name: "{autodesktop}\Flashcard Viewer.lnk"
 
 [Files]
 Source: "..\..\dist\FlashcardViewer\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs

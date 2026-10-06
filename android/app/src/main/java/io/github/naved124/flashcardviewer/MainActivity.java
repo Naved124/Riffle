@@ -58,7 +58,7 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * Hosts the shared Flashcard Viewer web UI (flashcard_viewer/ui, copied into assets/ui) in a WebView.
+ * Hosts the shared Riffle web UI (flashcard_viewer/ui, copied into assets/ui) in a WebView.
  * The app logic runs in JavaScript (ui/js/core); this class supplies what a web page cannot do itself:
  * serving bundled assets, an offline cache for CDN files, file picking/saving, "Open with"/share
  * intents, the back button and system-bar colours.
@@ -66,7 +66,7 @@ import java.util.Map;
 public class MainActivity extends Activity {
     private static final String HOST = "appassets.androidplatform.net";
     private static final String START_URL = "https://" + HOST + "/assets/ui/index.html";
-    private static final String UPDATE_PREFIX = "https://github.com/Naved124/flashcard-viewer/releases/download/";
+    private static final String UPDATE_PREFIX = "https://github.com/Naved124/Riffle/releases/download/";
     private static final String ACTION_INSTALL_STATUS = "io.github.naved124.flashcardviewer.INSTALL_STATUS";
     private static final int REQ_PICK = 1;
     private static final int REQ_SAVE = 2;
@@ -358,7 +358,7 @@ public class MainActivity extends Activity {
 
         @Override
         public boolean onConsoleMessage(ConsoleMessage m) {
-            android.util.Log.d("FlashcardViewer", m.message() + " @" + m.sourceId() + ":" + m.lineNumber());
+            android.util.Log.d("Riffle", m.message() + " @" + m.sourceId() + ":" + m.lineNumber());
             return true;
         }
     }
@@ -395,7 +395,7 @@ public class MainActivity extends Activity {
                 return serveCached(u.toString());
             } catch (Exception e) {
                 // Never let a bad request take the app down; the WebView falls back to a normal fetch.
-                android.util.Log.w("FlashcardViewer", "intercept failed: " + e);
+                android.util.Log.w("Riffle", "intercept failed: " + e);
                 return null;
             }
         }
@@ -628,7 +628,7 @@ public class MainActivity extends Activity {
                 startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + getPackageName())));
             } catch (RuntimeException e) {
                 pendingUpdate = null;
-                updateEvent("error", "message", "Allow \"Install unknown apps\" for Flashcard Viewer in system settings, then try again.");
+                updateEvent("error", "message", "Allow \"Install unknown apps\" for Riffle in system settings, then try again.");
             }
             return;
         }

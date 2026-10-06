@@ -17,7 +17,7 @@
       'background:#fdecea;color:#5f2120;border:1px solid #f5c2c0;max-width:860px';
     box.innerHTML = '<h2 style="margin:0 0 8px;font-size:18px"></h2><p style="margin:0 0 12px"></p><pre style="white-space:pre-wrap;font-size:12px;margin:0"></pre>';
     box.querySelector('h2').textContent = title;
-    box.querySelector('p').textContent = 'Flashcard Viewer could not run this React deck. The quiz may still work if cards were found in the source.';
+    box.querySelector('p').textContent = 'Riffle could not run this React deck. The quiz may still work if cards were found in the source.';
     box.querySelector('pre').textContent = msg;
     rootEl.appendChild(box);
     try { window.parent.postMessage({ fv: 'error', message: title + ': ' + msg.split('\n')[0] }, '*'); } catch (_) { /* */ }

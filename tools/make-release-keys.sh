@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Create the two private keys that sign Flashcard Viewer releases, and print the GitHub secrets
+# Create the two private keys that sign Riffle releases, and print the GitHub secrets
 # CI needs. Run it once, from the repository root:
 #
 #   tools/make-release-keys.sh
@@ -41,10 +41,10 @@ else
   (( ${#PASS} >= 8 )) || { echo "Use at least 8 characters." >&2; exit 1; }
   if command -v keytool >/dev/null; then
     keytool -genkeypair -storetype PKCS12 -keystore "$ANDROID_KEY" -alias "$ALIAS" -keyalg RSA -keysize 4096 \
-      -validity 10000 -dname "CN=Flashcard Viewer" -storepass "$PASS" -keypass "$PASS" >/dev/null 2>&1
+      -validity 10000 -dname "CN=Riffle" -storepass "$PASS" -keypass "$PASS" >/dev/null 2>&1
   else
     tmp=$(mktemp -d)
-    openssl req -x509 -newkey rsa:4096 -sha256 -days 10000 -nodes -subj "/CN=Flashcard Viewer" \
+    openssl req -x509 -newkey rsa:4096 -sha256 -days 10000 -nodes -subj "/CN=Riffle" \
       -keyout "$tmp/key.pem" -out "$tmp/cert.pem" 2>/dev/null
     openssl pkcs12 -export -inkey "$tmp/key.pem" -in "$tmp/cert.pem" -name "$ALIAS" -out "$ANDROID_KEY" -passout "pass:$PASS"
     rm -rf "$tmp"

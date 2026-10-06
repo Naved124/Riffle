@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Remove Flashcard Viewer. Your decks (~/Flashcards), settings and stats are kept unless you pass --purge.
+# Remove Riffle. Your decks (~/Flashcards), settings and stats are kept unless you pass --purge.
 set -euo pipefail
 APP=flashcard-viewer
 DATA="${XDG_DATA_HOME:-$HOME/.local/share}"

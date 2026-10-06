@@ -4,11 +4,11 @@ VSVersionInfo(
   kids=[
     StringFileInfo([StringTable('040904B0', [
       StringStruct('CompanyName', 'Naved124'),
-      StringStruct('FileDescription', 'Flashcard Viewer'),
+      StringStruct('FileDescription', 'Riffle'),
       StringStruct('FileVersion', '1.2.3'),
       StringStruct('InternalName', 'FlashcardViewer'),
       StringStruct('OriginalFilename', 'FlashcardViewer.exe'),
-      StringStruct('ProductName', 'Flashcard Viewer'),
+      StringStruct('ProductName', 'Riffle'),
       StringStruct('ProductVersion', '1.2.3')])]),
     VarFileInfo([VarStruct('Translation', [1033, 1200])])
   ]

@@ -74,7 +74,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.ctx = ctx
         self.was_maximized = False
-        self.setWindowTitle("Flashcard Viewer")
+        self.setWindowTitle("Riffle")
         if ICON_PATH.exists():
             self.setWindowIcon(QIcon(str(ICON_PATH)))
         self.setMinimumSize(560, 420)
@@ -125,7 +125,7 @@ class AppContext(QObject):
         self.profile = QWebEngineProfile("flashcard-viewer", self)
         self.profile.setPersistentStoragePath(str(paths.data_dir() / "webengine"))
         self.profile.setCachePath(str(paths.cache_dir() / "webengine"))
-        self.profile.setHttpUserAgent(self.profile.httpUserAgent() + f" FlashcardViewer/{__version__}")
+        self.profile.setHttpUserAgent(self.profile.httpUserAgent() + f" Riffle/{__version__}")
         self.app_handler = AppSchemeHandler(self)
         self.deck_handler = DeckSchemeHandler(self.library, self.settings, self)
         self.cdn_handler = CdnSchemeHandler(self.cache, self.settings, self)
@@ -318,7 +318,7 @@ def main(argv: list[str] | None = None) -> int:
     QApplication.setAttribute(Qt.ApplicationAttribute.AA_ShareOpenGLContexts)
     app = QApplication([sys.argv[0], *qt_args])
     app.setApplicationName("flashcard-viewer")
-    app.setApplicationDisplayName("Flashcard Viewer")
+    app.setApplicationDisplayName("Riffle")
     app.setDesktopFileName("flashcard-viewer")
     app.setApplicationVersion(__version__)
     if ICON_PATH.exists():

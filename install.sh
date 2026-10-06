@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install Flashcard Viewer for the current user (no root needed).
+# Install Riffle for the current user (no root needed).
 #   ./install.sh            install / update
 #   ./install.sh --system-deps   also print the distro packages Qt may need
 set -euo pipefail
@@ -29,7 +29,7 @@ python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 9) else 1)' || { e
 say "Creating virtual environment in $VENV"
 python3 -m venv "$VENV" || { echo "python3-venv is missing. Run: $0 --system-deps"; exit 1; }
 "$VENV/bin/python" -m pip install --upgrade --quiet pip
-say "Installing Flashcard Viewer and its dependencies (PyQt6 + Qt WebEngine, ~200 MB the first time)"
+say "Installing Riffle and its dependencies (PyQt6 + Qt WebEngine, ~200 MB the first time)"
 "$VENV/bin/python" -m pip install --upgrade --quiet "$SRC"
 
 say "Creating launcher $BIN/$APP"
@@ -49,7 +49,7 @@ command -v update-desktop-database >/dev/null && update-desktop-database -q "$DA
 command -v gtk-update-icon-cache >/dev/null && gtk-update-icon-cache -q -t "$DATA/icons/hicolor" 2>/dev/null || true
 
 mkdir -p "$HOME/Flashcards"
-say "Done! Launch “Flashcard Viewer” from your app menu, or run: $APP"
+say "Done! Launch “Riffle” from your app menu, or run: $APP"
 say "Put your flashcard .html / .jsx files in ~/Flashcards (or add folders in Settings)."
 case ":$PATH:" in *":$BIN:"*) ;; *) echo "Note: $BIN is not on your PATH — add it to run '$APP' from a terminal.";; esac
 if ! "$VENV/bin/python" -c "from PyQt6.QtWidgets import QApplication" 2>/dev/null; then

@@ -1,7 +1,7 @@
 /* Runtime of decks made with the deck editor (inlined into each deck file, see js/core/deckgen.js).
  * Reads the cards from <script id="fv-deck-data">, renders their Markdown safely (everything is
  * escaped; links only http(s)/mailto, images only embedded data: images or https), and loads KaTeX
- * when a card has maths: from the app's bundled copy when running inside Flashcard Viewer, otherwise
+ * when a card has maths: from the app's bundled copy when running inside Riffle, otherwise
  * from a CDN. The editor's live preview drives it with {fvPreview: {...}} messages. */
 (function () {
   'use strict';

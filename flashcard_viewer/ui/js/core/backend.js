@@ -402,7 +402,7 @@ export class JsBackend {
     const [file] = await this.pickFiles('.json,application/json');
     if (!file) return null;
     const data = JSON.parse(await file.text());
-    if (data.format !== 'flashcard-viewer-backup') throw new Error('Not a Flashcard Viewer backup file (.json from the mobile app)');
+    if (data.format !== 'flashcard-viewer-backup') throw new Error('Not a Riffle backup file (.json from the mobile app)');
     const idMap = {};
     for (const d of data.decks || []) idMap[d.id] = await this.importFile(d.filename, d.text);
     const remap = (id) => idMap[id] || id;

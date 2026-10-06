@@ -1,6 +1,6 @@
 """Update checks against the project's GitHub Releases, and installing them in place.
 
-* Windows (frozen PyInstaller build): download the new ``FlashcardViewer-Setup-<v>.exe`` and run it
+* Windows (frozen PyInstaller build): download the new ``Riffle-Setup-<v>.exe`` and run it
   silently; Inno Setup keeps the previous install location and relaunches the app.
 * Linux (``install.sh`` virtual environment): ``pip install --upgrade`` the release's wheel into the
   running interpreter, then restart.
@@ -25,13 +25,13 @@ from pathlib import Path
 
 from . import ed25519, signing
 
-REPO = "Naved124/flashcard-viewer"
+REPO = "Naved124/Riffle"
 API_LATEST = f"https://api.github.com/repos/{REPO}/releases/latest"
 DOWNLOAD_PREFIX = f"https://github.com/{REPO}/releases/download/"
 USER_AGENT = "flashcard-viewer-updater"
 SUMS = "SHA256SUMS"
 WHEEL_RX = re.compile(r"flashcard_viewer-[\w.]+-py3-none-any\.whl")
-INSTALLER_RX = re.compile(r"FlashcardViewer-Setup-[\w.\-]+\.exe")
+INSTALLER_RX = re.compile(r"Riffle-Setup-[\w.\-]+\.exe")
 
 
 class UpdateError(Exception):

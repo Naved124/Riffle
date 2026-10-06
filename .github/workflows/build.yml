@@ -81,7 +81,7 @@ jobs:
           $pfx = Join-Path $env:RUNNER_TEMP 'cert.pfx'
           [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WIN_PFX))
           $signtool = (Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" | Sort-Object FullName -Descending | Select-Object -First 1).FullName
-          $files = @(Get-ChildItem dist\FlashcardViewer\FlashcardViewer.exe, dist\FlashcardViewer-Setup-*.exe -ErrorAction SilentlyContinue | ForEach-Object FullName)
+          $files = @(Get-ChildItem dist\FlashcardViewer\FlashcardViewer.exe, dist\Riffle-Setup-*.exe -ErrorAction SilentlyContinue | ForEach-Object FullName)
           & $signtool sign /f $pfx /p $env:WIN_PFX_PASSWORD /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 $files
           if ($LASTEXITCODE -ne 0) { throw "signtool failed" }
           Remove-Item $pfx
@@ -109,14 +109,14 @@ jobs:
           $pfx = Join-Path $env:RUNNER_TEMP 'cert.pfx'
           [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WIN_PFX))
           $signtool = (Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" | Sort-Object FullName -Descending | Select-Object -First 1).FullName
-          $files = @(Get-ChildItem dist\FlashcardViewer\FlashcardViewer.exe, dist\FlashcardViewer-Setup-*.exe -ErrorAction SilentlyContinue | ForEach-Object FullName)
+          $files = @(Get-ChildItem dist\FlashcardViewer\FlashcardViewer.exe, dist\Riffle-Setup-*.exe -ErrorAction SilentlyContinue | ForEach-Object FullName)
           & $signtool sign /f $pfx /p $env:WIN_PFX_PASSWORD /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 $files
           if ($LASTEXITCODE -ne 0) { throw "signtool failed" }
           Remove-Item $pfx
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: release-windows
-          path: dist/FlashcardViewer-Setup-*.exe
+          path: dist/Riffle-Setup-*.exe
           if-no-files-found: error
 
   android:
@@ -155,7 +155,7 @@ jobs:
           gradle -p android assembleRelease --no-daemon --stacktrace
           ver=$(sed -n 's/^__version__ = "\(.*\)"/\1/p' flashcard_viewer/__init__.py)
           mkdir -p dist
-          cp android/app/build/outputs/apk/release/app-release.apk "dist/FlashcardViewer-$ver.apk"
+          cp android/app/build/outputs/apk/release/app-release.apk "dist/Riffle-$ver.apk"
           ls -la dist
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: env.HAS_ANDROID_KEY == 'true'
@@ -229,7 +229,7 @@ jobs:
         with:
           tag_name: v${{ steps.ver.outputs.version }}
           target_commitish: ${{ github.sha }}
-          name: Flashcard Viewer ${{ steps.ver.outputs.version }}
+          name: Riffle ${{ steps.ver.outputs.version }}
           files: artifacts/*
           make_latest: true
           body: |
@@ -238,10 +238,10 @@ jobs:
 
             <!-- install -->
             ## Install
-            **Windows 10/11:** download `FlashcardViewer-Setup-${{ steps.ver.outputs.version }}.exe` and run it.
+            **Windows 10/11:** download `Riffle-Setup-${{ steps.ver.outputs.version }}.exe` and run it.
             SmartScreen may warn because the installer isn't code-signed: choose *More info → Run anyway*.
 
-            **Android 8.0+:** download `FlashcardViewer-${{ steps.ver.outputs.version }}.apk`, allow "Install unknown apps" for your
+            **Android 8.0+:** download `Riffle-${{ steps.ver.outputs.version }}.apk`, allow "Install unknown apps" for your
             browser or file manager, and open it. Keep *Android System WebView* updated from the Play Store.
 
             Already installed? The app finds new versions by itself and offers to update (Settings → About).
