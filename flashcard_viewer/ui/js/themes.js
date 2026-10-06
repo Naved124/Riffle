@@ -206,6 +206,27 @@ export function previewColors(themeId, a, systemScheme) {
 
 export function catppuccinAccentColor(name, flavour) { return CATPPUCCIN[flavour || 'mocha'][name]; }
 
+const DECK_COLORS = ['primary', 'on-primary', 'primary-container', 'on-primary-container', 'secondary-container',
+  'on-secondary-container', 'tertiary-container', 'on-tertiary-container', 'surface', 'on-surface', 'on-surface-variant',
+  'surface-container-low', 'surface-container', 'surface-container-high', 'surface-container-highest', 'outline',
+  'outline-variant', 'error', 'error-container', 'on-error-container'];
+
+/** The current theme as --fv-* variables, for decks made with the deck editor (see custom-deck.css). */
+export function deckThemeVars() {
+  const cs = getComputedStyle(document.documentElement);
+  const vars = {};
+  for (const k of DECK_COLORS) {
+    const v = cs.getPropertyValue('--md-sys-color-' + k).trim();
+    if (v) vars['--fv-' + k] = v;
+  }
+  const extra = { '--fv-good': '--c-good', '--fv-font': '--font', '--fv-mono': '--font-mono', '--fv-corner': '--corner', '--fv-font-scale': '--font-scale' };
+  for (const [to, from] of Object.entries(extra)) {
+    const v = cs.getPropertyValue(from).trim();
+    if (v) vars[to] = v;
+  }
+  return { vars, dark: document.documentElement.classList.contains('dark') };
+}
+
 /** Apply tokens + appearance variables to the document. */
 export function applyTheme(a, systemScheme) {
   const r = resolveTheme(a, systemScheme);

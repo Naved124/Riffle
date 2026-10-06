@@ -17,5 +17,6 @@ Test decks that cover the different shapes AI-made flashcard artifacts come in, 
 | `10-日本語-kana.HTM` | Unicode filename, upper-case `.HTM`, malformed HTML, cards in `data-front` / `data-back` attributes | 10 |
 | `11-docker-mcq-quiz.html` | Quiz-style data: answer given as `options[correct]` index, a letter (`"B"`) or `correctIndex`, plus explanations | 5 |
 | `12-git-tuple-rows.html` | Cards as tuple rows `[topic, question, answer, note]` instead of objects, a Google Fonts stylesheet, and a `1 / 6` counter right next to a `0 known` score | 6 |
+| `13-deck-editor-chemistry.html` | Made with the app's deck editor: cards as JSON in `<script id="fv-deck-data">` with Markdown, LaTeX, an embedded image, multiple choice, hints, categories, a card whose text contains `</script>`, and an unfinished card that must be skipped | 8 |
 
 Copy them into `~/Flashcards` to try the app with them.

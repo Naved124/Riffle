@@ -8,12 +8,14 @@ import json
 import os
 import re
 import shutil
+import tempfile
 import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 
 from . import paths
 from .config import LibraryState, Settings, atomic_write_json
+from .customdeck import deck_search_text, parse_custom_deck
 from .extract import Card, decode_bytes, extract_cards, is_script_source
 
 DECK_EXTS = (".html", ".htm", ".xhtml", ".jsx", ".tsx")
@@ -97,6 +99,7 @@ class DeckInfo:
     card_count: int
     methods: list[str]
     external: bool = False
+    custom: bool = False   # made with the deck editor (can be edited in the app)
 
     def to_dict(self) -> dict:
         return dict(self.__dict__)
@@ -178,7 +181,12 @@ class Library:
             "title": guess_title(text, p.name),
             "emoji": _emoji(text),
             "kind": deck_kind(text, p.name),
+            "custom": False,
         }
+        custom = parse_custom_deck(text)
+        if custom is not None:
+            entry.update(plain=fold(deck_search_text(custom)), title=custom["title"] or _prettify_filename(p.name),
+                         emoji=custom["emoji"], custom=True)
         self._cache[did] = (st.st_mtime, st.st_size, entry)
         return entry
 
@@ -193,7 +201,7 @@ class Library:
             id=did, path=str(p), filename=p.name, folder=str(p.parent), title=entry["title"],
             emoji=entry["emoji"], kind=entry["kind"], size=st.st_size, mtime=st.st_mtime,
             card_count=len(cards), methods=entry["methods"] if not self._override_path(did).exists() else ["manual"],
-            external=external,
+            external=external, custom=entry["custom"],
         )
 
     def refresh(self, deck_id: str) -> DeckInfo | None:
@@ -259,6 +267,44 @@ class Library:
         except FileNotFoundError:
             pass
         self.refresh(deck_id)
+
+    # -- decks made with the deck editor ---------------------------------------------
+    def custom_deck(self, deck_id: str) -> dict | None:
+        text = self.text(deck_id)
+        return parse_custom_deck(text) if text is not None else None
+
+    def create_custom_deck(self, name: str, html: str) -> Path:
+        if parse_custom_deck(html) is None:
+            raise ValueError("not a deck made with the deck editor")
+        return self.import_file(name, html.encode("utf-8"))
+
+    def save_custom_deck(self, deck_id: str, html: str) -> DeckInfo | None:
+        """Overwrite a deck file, but only one the deck editor made, and only with another such deck."""
+        info = self.decks.get(deck_id)
+        if not info:
+            raise KeyError("deck not found")
+        if parse_custom_deck(html) is None:
+            raise ValueError("not a deck made with the deck editor")
+        p = Path(info.path)
+        if parse_custom_deck(decode_bytes(p.read_bytes())) is None:
+            raise PermissionError("only decks made with the deck editor can be edited")
+        fd, tmp = tempfile.mkstemp(prefix=".tmp-", suffix=".html", dir=str(p.parent))
+        try:
+            with os.fdopen(fd, "wb") as f:
+                f.write(html.encode("utf-8"))
+            shutil.copymode(p, tmp)
+            os.replace(tmp, p)
+        except BaseException:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+            raise
+        try:
+            self._override_path(deck_id).unlink()  # the file now holds the cards
+        except FileNotFoundError:
+            pass
+        return self.refresh(deck_id)
 
     # -- search ------------------------------------------------------------------
     def search(self, query: str) -> list[dict]:

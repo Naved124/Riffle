@@ -1,6 +1,7 @@
 // Library page: deck list (search / filter / sort / favourites) and the deck viewer.
 import { call, fire } from './api.js';
 import { store, setSettings, emit } from './store.js';
+import { deckThemeVars } from './themes.js';
 import {
   $, $$, h, icon, esc, fmtAgo, fmtDuration, fmtBytes, pct, debounce, snackbar, dialog, confirmDialog, promptDialog, deckAvatar,
 } from './util.js';
@@ -168,6 +169,8 @@ export function deckConfig() {
     zoom: s.decks.zoom,
     shortcuts: Object.values(s.shortcuts),
     appMode: document.documentElement.classList.contains('dark') ? 'dark' : 'light',
+    appTheme: deckThemeVars(),
+    reduceMotion: !s.motion.enabled || !!s.motion.reduce,
   };
 }
 export function pushDeckConfig() {
@@ -318,6 +321,7 @@ function onFrameMessage(e) {
 async function editCards() {
   const d = store.current;
   if (!d) return;
+  if (d.custom) { emit({ type: 'create-deck', deckId: d.id }); return; } // made with the deck editor
   const data = await call('getCards', d.id);
   let rows = data.cards.map((c) => ({ ...c }));
   const list = h('div.card-editor');
@@ -340,6 +344,7 @@ async function editCards() {
   if (data.manual) {
     actions.push({ label: 'Reset to auto-detected', value: 'reset', submit: true });
   }
+  actions.push({ label: 'Make editable copy', value: 'copy' });
   actions.push({ label: 'Cancel', value: 'cancel' }, { label: 'Save cards', value: 'save', primary: true });
   const v = await dialog({
     headline: `Cards — ${d.name}`, icon: 'edit_note', wide: true,
@@ -354,6 +359,12 @@ async function editCards() {
     await call('resetCards', d.id);
     snackbar('Cards reset to auto-detected');
     await refreshDecks();
+  } else if (v === 'copy') {
+    // A new deck-editor deck with these cards (formatting, images and maths can then be added).
+    const cards = rows.filter((r) => r.front.trim() && r.back.trim()).map((r) => (r.choices && r.choices.length >= 2 && r.choices.includes(r.back)
+      ? { type: 'mcq', front: r.front, choices: r.choices, correct: r.choices.indexOf(r.back), hint: r.hint, explanation: r.explanation, category: r.category }
+      : { type: 'basic', front: r.front, back: r.back, hint: r.hint, explanation: r.explanation, category: r.category }));
+    emit({ type: 'create-deck', seed: { title: `${d.name} (my copy)`, emoji: d.emoji, cards } });
   }
 }
 
@@ -498,7 +509,12 @@ export function initLibrary() {
   renderToolbar();
 }
 
+// The deck editor is about to overwrite a deck file: reload quietly when the file watcher notices.
+let quietUntil = 0;
+export function expectDeckChange() { quietUntil = Date.now() + 4000; }
+
 export function onDeckFileChanged(id) {
+  if (Date.now() < quietUntil) { refreshDecks(); return; }
   if (store.current && store.current.id === id) {
     reloadDeck();
     snackbar('Deck file changed — reloaded', { timeout: 2500 });

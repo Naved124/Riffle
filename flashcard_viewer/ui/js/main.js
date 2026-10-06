@@ -6,12 +6,13 @@ import { applyTheme } from './themes.js';
 import { $, $$, h, snackbar, dialog, comboFromEvent, prettyCombo } from './util.js';
 import {
   initLibrary, refreshDecks, renderList, openDeck, reloadDeck, setDeckZoom, pushDeckConfig, onDeckFileChanged, editCards,
-  visibleDecks, toggleFav, markActivity, dismissQuizPrompt, showDeckList,
+  visibleDecks, toggleFav, markActivity, dismissQuizPrompt, showDeckList, expectDeckChange,
 } from './library.js';
 import { initQuiz, renderPicker, startQuiz, quizKey, quizActive } from './quiz.js';
 import { renderStats, deckStatsDialog, updateStreakBadge } from './stats.js';
 import { initSettings, openSettings, renderSection, SHORTCUT_LABELS } from './settings.js';
 import { initUpdates } from './update.js';
+import { openDeckEditor, closeDeckEditor, editorOpen, editorKey } from './editor.js';
 
 // ------------------------------------------------------------------ appearance
 function applyAll() {
@@ -79,6 +80,7 @@ function cycleDeck(dir) {
 const ACTIONS = {
   search: () => { goto('library'); $('#search-input').focus(); $('#search-input').select(); },
   openFile: () => addFiles(),
+  newDeck: () => createDeck(),
   fullscreen: () => toggleFullscreen(),
   focusMode: () => toggleFocus(),
   quiz: () => store.current && emit({ type: 'start-quiz', deckId: store.current.id }),
@@ -104,6 +106,7 @@ function runCombo(combo) {
 }
 function onKeyDown(e) {
   if ($('md-dialog[open]')) return;
+  if (editorOpen()) { if (editorKey(e)) e.preventDefault(); return; }
   const combo = comboFromEvent(e);
   if (!combo) return;
   if (e.key === 'Escape' && document.body.classList.contains('focus')) { e.preventDefault(); toggleFocus(); return; }
@@ -125,6 +128,19 @@ function cheatsheet() {
 }
 
 // ------------------------------------------------------------------ files
+/** Open the deck editor; `seed` prefills a new deck, `id` edits an editor-made one. */
+function createDeck(opts = {}) {
+  return openDeckEditor({
+    ...opts,
+    saved: async (id) => {
+      await refreshDecks();
+      goto('library');
+      if (store.current && store.current.id === id) reloadDeck();
+      else openDeck(id);
+    },
+  });
+}
+
 async function addFiles() {
   const ids = await call('openFilesDialog');
   if (ids && ids.length) {
@@ -141,13 +157,14 @@ function initDrop() {
   let hideTimer = null;
   const show = () => { overlay.classList.add('show'); clearTimeout(hideTimer); hideTimer = setTimeout(() => overlay.classList.remove('show'), 4000); };
   const hide = () => overlay.classList.remove('show');
-  window.addEventListener('dragenter', (e) => { if (Array.from(e.dataTransfer.types).includes('Files')) show(); });
+  window.addEventListener('dragenter', (e) => { if (!editorOpen() && Array.from(e.dataTransfer.types).includes('Files')) show(); });
   overlay.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; show(); });
   overlay.addEventListener('dragleave', (e) => { if (e.target === overlay) hide(); });
   window.addEventListener('dragover', (e) => e.preventDefault());
   window.addEventListener('drop', async (e) => {
     e.preventDefault();
     hide();
+    if (editorOpen()) return; // the deck editor handles its own drops
     const files = Array.from(e.dataTransfer.files || []);
     const good = files.filter((f) => DECK_RX.test(f.name));
     if (!good.length) { snackbar(files.length ? 'Only .html, .htm, .jsx and .tsx decks can be added' : 'Nothing to add'); return; }
@@ -161,7 +178,7 @@ function initDrop() {
     snackbar(`Added ${ids.length} deck${ids.length === 1 ? '' : 's'} to ${store.settings.library.mainFolder}`);
     if (good.length < files.length) snackbar(`${files.length - good.length} file(s) skipped — not a deck`);
   });
-  subscribe((ev) => { if (ev && ev.type === 'dragenter') show(); });
+  subscribe((ev) => { if (ev && ev.type === 'dragenter' && !editorOpen()) show(); });
 }
 
 // ------------------------------------------------------------------ window chrome
@@ -187,6 +204,8 @@ function initChrome() {
   });
   $$('.rail-item').forEach((b) => b.addEventListener('click', () => goto(b.dataset.page)));
   $('#fab-add').addEventListener('click', addFiles);
+  $('#btn-new-deck').addEventListener('click', () => createDeck());
+  $('#empty-create').addEventListener('click', () => createDeck());
 }
 
 function setWindowState(st) {
@@ -206,6 +225,7 @@ subscribe(async (ev) => {
   if (ev === 'stats-changed') { updateStreakBadge(); refreshDecks(); if (store.page === 'stats') renderStats(); return; }
   if (ev === 'titlebar') { applyAll(); return; }
   if (ev === 'cheatsheet') { cheatsheet(); return; }
+  if (ev === 'deck-saving') { expectDeckChange(); return; }
   if (!ev || typeof ev !== 'object') return;
   switch (ev.type) {
     case 'goto': goto(ev.page, { silent: ev.silent }); break;
@@ -217,6 +237,7 @@ subscribe(async (ev) => {
       break;
     case 'toggle-focus': toggleFocus(); break;
     case 'add-files': addFiles(); break;
+    case 'create-deck': createDeck({ id: ev.deckId || null, seed: ev.seed || null }); break;
     case 'deck-stats': deckStatsDialog(ev.deckId); break;
     case 'shortcut': runCombo(ev.combo); break;
     default:
@@ -228,6 +249,7 @@ subscribe(async (ev) => {
 window.__fvBack = () => {
   const dlg = document.querySelector('md-dialog[open]');
   if (dlg) { dlg.close('cancel'); return true; }
+  if (editorOpen()) { closeDeckEditor(); return true; }
   const menu = document.querySelector('md-menu[open]');
   if (menu) { menu.open = false; return true; }
   if (document.body.classList.contains('focus')) { toggleFocus(); return true; }

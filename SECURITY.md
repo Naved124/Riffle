@@ -26,6 +26,10 @@ Flashcard decks are HTML and JavaScript from anywhere, so the apps treat them as
   Downloads) can load none.
 - The offline CDN cache never fetches from this device or the local network, and lets a deck read a
   response only when the original server allows cross-origin reads.
+- Decks made with the deck editor are no exception. Their cards are shown as text (the Markdown renderer
+  escapes everything; links can only be `http(s):` or `mailto:`, images only ones embedded in the deck or
+  `https:` URLs), the editor's live preview runs in a sandboxed frame, and the app only overwrites a deck
+  file that the deck editor made, with another such deck.
 
 ## Retired key: do not trust
 

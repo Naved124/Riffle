@@ -337,7 +337,15 @@ public class MainActivity extends Activity {
             fileCallback = callback;
             Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
             i.addCategory(Intent.CATEGORY_OPENABLE);
-            i.setType("*/*"); // .jsx/.tsx have no reliable MIME type; the app filters by content
+            // .jsx/.tsx have no reliable MIME type, so decks use */* and the app filters by content;
+            // the deck editor's image button asks for image/* and gets the image picker.
+            boolean images = false;
+            String[] accept = params.getAcceptTypes();
+            if (accept != null && accept.length > 0) {
+                images = true;
+                for (String a : accept) if (a == null || !a.startsWith("image/")) images = false;
+            }
+            i.setType(images ? "image/*" : "*/*");
             i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, params.getMode() == FileChooserParams.MODE_OPEN_MULTIPLE);
             try {
                 startActivityForResult(i, REQ_PICK);

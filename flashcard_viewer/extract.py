@@ -24,6 +24,7 @@ from dataclasses import asdict, dataclass, field
 
 from bs4 import BeautifulSoup, NavigableString, Tag
 
+from .customdeck import deck_cards, parse_custom_deck
 from .jsparse import UNKNOWN, find_literal_arrays
 
 __all__ = ["Card", "Extraction", "extract_cards", "card_key", "decode_bytes", "is_script_source"]
@@ -536,6 +537,9 @@ def _dedupe(cards: list[Card]) -> list[Card]:
 
 
 def extract_cards(text: str, filename: str = "deck.html") -> Extraction:
+    custom = parse_custom_deck(text)
+    if custom is not None:  # made with the deck editor: its cards are exact
+        return Extraction(_dedupe([Card(**c) for c in deck_cards(custom)]), ["deck-editor"])
     script = is_script_source(filename, text)
     script_cards = from_scripts(text, script)
     if len(script_cards) >= 2 or script:

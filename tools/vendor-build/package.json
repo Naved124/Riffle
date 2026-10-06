@@ -20,6 +20,7 @@
     "@babel/standalone": "7.29.9",
     "@tailwindcss/browser": "4.3.3",
     "lucide-react": "0.469.0",
+    "katex": "0.16.22",
     "esbuild": "0.28.2"
   }
 }

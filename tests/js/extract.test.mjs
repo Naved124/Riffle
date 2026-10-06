@@ -22,6 +22,7 @@ const EXPECTED = {
   '10-日本語-kana.HTM': [10, ['ふ', 'fu (hu)']],
   '11-docker-mcq-quiz.html': [5, ['What file is used to define multi-container applications?', 'docker-compose.yml']],
   '12-git-tuple-rows.html': [6, ['Which command stages file.txt?', 'git add file.txt']],
+  '13-deck-editor-chemistry.html': [8, ['Which gas do plants absorb for photosynthesis?', 'Carbon dioxide']],
 };
 
 for (const [name, [count, pair]] of Object.entries(EXPECTED)) {

@@ -105,6 +105,14 @@ await build({
   banner: { js: 'var react = window.React;' },
 });
 
+// 5. KaTeX, for maths in decks made with the deck editor (woff2 fonts only).
+copy('katex/dist/katex.min.js', 'katex/katex.min.js');
+fs.writeFileSync(path.join(out, 'katex/katex.min.css'), fs.readFileSync(path.join(nm, 'katex/dist/katex.min.css'), 'utf8')
+  .replace(/,url\([^)]+\.woff\) format\("woff"\),url\([^)]+\.ttf\) format\("truetype"\)/g, ''));
+for (const f of fs.readdirSync(path.join(nm, 'katex/dist/fonts'))) {
+  if (f.endsWith('.woff2')) copy(`katex/dist/fonts/${f}`, `katex/fonts/${f}`);
+}
+
 // Licenses.
 const lic = [
   ['@material/web', 'LICENSE'],
@@ -116,6 +124,7 @@ const lic = [
   ['@tailwindcss/browser', 'LICENSE'],
   ['@fontsource/maple-mono', 'LICENSE'],
   ['@fontsource/inter', 'LICENSE'],
+  ['katex', 'LICENSE'],
 ];
 let notices = 'Third-party assets bundled for offline use. Fonts from Google Fonts / Fontsource are licensed under the SIL Open Font License 1.1.\n\n';
 for (const [pkg, f] of lic) {

@@ -7,8 +7,9 @@ import { buildQuiz, gradeResponse } from './quizcore.js';
 import { Stats } from './statscore.js';
 import { renderDeck } from './render.js';
 import { API_LATEST, summarize } from './updatecore.js';
+import { parseDeckHtml, deckSearchText } from './deckgen.js';
 
-const EXTRACT_VERSION = 1;
+const EXTRACT_VERSION = 2;
 const DECK_RX = /\.(html?|xhtml|jsx|tsx)$/i;
 const android = () => (typeof window !== 'undefined' && window.AndroidBridge) || null;
 // MainActivity passes a per-install key in the page URL (#k=...). Deck frames can't read it, so
@@ -132,8 +133,12 @@ export class JsBackend {
     const ex = extractCards(text, rec.filename);
     Object.assign(rec, {
       v: EXTRACT_VERSION, title: guessTitle(text, rec.filename), emoji: guessEmoji(text), kind: deckKind(text, rec.filename),
-      cards: ex.cards, methods: ex.methods, plain: plainText(text, rec.filename).slice(0, 200000), size: text.length,
+      cards: ex.cards, methods: ex.methods, plain: plainText(text, rec.filename).slice(0, 200000), size: text.length, custom: false,
     });
+    const custom = parseDeckHtml(text);
+    if (custom) {
+      Object.assign(rec, { title: custom.title || prettifyFilename(rec.filename), emoji: custom.emoji, plain: fold(deckSearchText(custom)).slice(0, 200000), custom: true });
+    }
     await this.saveIndex();
   }
 
@@ -153,7 +158,7 @@ export class JsBackend {
       kind: rec.kind, size: rec.size, mtime: rec.mtime, card_count: cards.length, methods: manual ? ['manual'] : rec.methods,
       external: false, name: this.lib.renames[rec.id] || rec.title, favourite: this.lib.favourites.includes(rec.id),
       renamed: rec.id in this.lib.renames, recentIndex: ri < 0 ? null : ri,
-      stats: this.stats.deckSummary(rec.id, cards.map((c) => c.key)), manualCards: manual,
+      stats: this.stats.deckSummary(rec.id, cards.map((c) => c.key)), manualCards: manual, custom: !!rec.custom,
     };
   }
 
@@ -314,6 +319,25 @@ export class JsBackend {
   async importDropped(name, content) { return this.importFile(name, content); }
   async chooseFolder() { return null; }
   async openPath() { return false; }
+
+  // -- decks made with the deck editor --
+  async getCustomDeck(id) { return this.decks.has(id) ? parseDeckHtml(await this.text(id)) : null; }
+  async createCustomDeck(name, html) {
+    if (!parseDeckHtml(html)) throw new Error('not a deck made with the deck editor');
+    return this.importFile(name, html);
+  }
+  async saveCustomDeck(id, html) {
+    const rec = this.decks.get(id);
+    if (!rec) throw new Error('deck not found');
+    if (!parseDeckHtml(html)) throw new Error('not a deck made with the deck editor');
+    if (!parseDeckHtml(await this.text(id))) throw new Error('only decks made with the deck editor can be edited');
+    await kv.set('deck:' + id, html);
+    this.texts.set(id, html);
+    Object.assign(rec, { hash: contentHash(html), mtime: Date.now() / 1000 });
+    try { localStorage.removeItem('fv.overrides.' + id); } catch (_) { /* */ }
+    await this.reindex(id);
+    return this.deckDict(rec);
+  }
 
   async getCards(id) {
     const rec = this.decks.get(id);

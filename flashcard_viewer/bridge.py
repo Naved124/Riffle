@@ -246,6 +246,25 @@ class Bridge(QObject):
         QDesktopServices.openUrl(QUrl.fromLocalFile(str(target)))
         return _j(True)
 
+    # -- decks made with the deck editor ----------------------------------------------
+    @pyqtSlot(str, result=str)
+    @_safe
+    def getCustomDeck(self, deck_id: str) -> str:
+        return _j(self.library.custom_deck(deck_id))
+
+    @pyqtSlot(str, str, result=str)
+    @_safe
+    def createCustomDeck(self, name: str, html: str) -> str:
+        target = self.library.create_custom_deck(name, html)
+        self.ctx.rescan(emit=False)
+        return _j(deck_id_for(target))
+
+    @pyqtSlot(str, str, result=str)
+    @_safe
+    def saveCustomDeck(self, deck_id: str, html: str) -> str:
+        info = self.library.save_custom_deck(deck_id, html)
+        return _j(self._deck_dict(info) if info else None)
+
     # -- cards & quiz ----------------------------------------------------------------
     @pyqtSlot(str, result=str)
     @_safe

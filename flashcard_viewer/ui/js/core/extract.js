@@ -1,5 +1,6 @@
 // Find question/answer pairs in flashcard HTML / React artifacts (port of flashcard_viewer/extract.py).
 import { UNKNOWN, findLiteralArrays } from './jsparse.js';
+import { parseDeckHtml, deckCards } from './deckgen.js';
 
 export function cardKey(front) {
   const norm = String(front).normalize('NFKC').toLowerCase().replace(/\s+/g, ' ').trim();
@@ -381,6 +382,8 @@ function dedupe(cards) {
 }
 
 export function extractCards(text, filename = 'deck.html', parser = null) {
+  const custom = parseDeckHtml(text);
+  if (custom) return { cards: dedupe(deckCards(custom).map((c) => makeCard(c.front, c.back, c))), methods: ['deck-editor'] }; // made with the deck editor
   const script = isScriptSource(filename, text);
   const scriptCards = fromScripts(text, script);
   if (scriptCards.length >= 2 || script) return { cards: dedupe(scriptCards), methods: scriptCards.length ? ['script'] : [] };

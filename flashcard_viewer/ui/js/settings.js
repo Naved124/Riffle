@@ -8,7 +8,7 @@ import { $, $$, h, icon, fmtBytes, snackbar, dialog, confirmDialog, comboFromEve
 export const BUNDLED_FONTS = ['Roboto Flex', 'Roboto', 'Inter', 'Outfit', 'Lexend', 'Atkinson Hyperlegible', 'Comic Relief', 'Maple Mono', 'Comic Mono'];
 export const BUNDLED_MONO = ['Maple Mono', 'Comic Mono'];
 export const SHORTCUT_LABELS = {
-  search: 'Search decks', openFile: 'Add deck files', fullscreen: 'Fullscreen focus mode', focusMode: 'Focus mode (keep window)',
+  search: 'Search decks', openFile: 'Add deck files', newDeck: 'Create a deck', fullscreen: 'Fullscreen focus mode', focusMode: 'Focus mode (keep window)',
   quiz: 'Quiz the open deck', nextDeck: 'Next deck', prevDeck: 'Previous deck', zoomIn: 'Zoom in (deck)', zoomOut: 'Zoom out (deck)',
   zoomReset: 'Reset zoom', reload: 'Reload deck', favourite: 'Toggle favourite', library: 'Go to Library', quizPage: 'Go to Quiz',
   stats: 'Go to Stats', settings: 'Go to Settings', toggleSidebar: 'Show / hide deck list', cheatsheet: 'Shortcut cheat sheet',

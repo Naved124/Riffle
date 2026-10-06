@@ -94,6 +94,7 @@ export const DEFAULTS = {
     "settings": "Ctrl+,",
     "toggleSidebar": "Ctrl+B",
     "openFile": "Ctrl+O",
+    "newDeck": "Ctrl+N",
     "cheatsheet": "Ctrl+/"
   },
   "general": {

@@ -28,6 +28,7 @@ DEFAULT_SHORTCUTS = {
     "settings": "Ctrl+,",
     "toggleSidebar": "Ctrl+B",
     "openFile": "Ctrl+O",
+    "newDeck": "Ctrl+N",
     "cheatsheet": "Ctrl+/",
 }
 

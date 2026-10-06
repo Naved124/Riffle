@@ -69,6 +69,7 @@
             <h2 class="title-large">Library</h2>
             <span class="pane-count" id="deck-count"></span>
             <span class="spacer"></span>
+            <md-icon-button id="btn-new-deck" title="Create a deck (Ctrl+N)"><md-icon>library_add</md-icon></md-icon-button>
             <span style="position:relative">
               <md-icon-button id="btn-sort" title="Sort"><md-icon>sort</md-icon></md-icon-button>
               <md-menu id="menu-sort" anchor="btn-sort" positioning="popover">
@@ -135,9 +136,10 @@
             <div class="viewer-empty" id="viewer-empty">
               <div class="empty-art"><md-icon>style</md-icon></div>
               <h2 class="headline-small">Pick a deck to start studying</h2>
-              <p class="body-medium muted">Decks are HTML or React files in your watched folders. Drop files anywhere in this window to add them.</p>
-              <div class="row gap">
+              <p class="body-medium muted">Decks are HTML or React files in your watched folders. Drop files anywhere in this window to add them, or make your own.</p>
+              <div class="row gap wrap" style="justify-content:center">
                 <md-filled-button id="empty-add"><md-icon slot="icon">add</md-icon>Add decks</md-filled-button>
+                <md-filled-tonal-button id="empty-create"><md-icon slot="icon">library_add</md-icon>Create a deck</md-filled-tonal-button>
                 <md-outlined-button id="empty-folder" class="desktop-only"><md-icon slot="icon">folder_open</md-icon>Open decks folder</md-outlined-button>
               </div>
             </div>

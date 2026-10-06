@@ -162,7 +162,9 @@ class AppSchemeHandler(QWebEngineUrlSchemeHandler):
         if not p or not p.is_file():
             job.fail(QWebEngineUrlRequestJob.Error.UrlNotFound)
             return
-        _reply(job, p.read_bytes(), _mime(str(p)))
+        # Bundled third-party assets may be read cross-origin: the deck editor's sandboxed preview
+        # (an opaque origin) needs the fonts. They are public files, so this exposes nothing.
+        _reply(job, p.read_bytes(), _mime(str(p)), cors=path.startswith("/vendor/"))
 
 
 class DeckSchemeHandler(QWebEngineUrlSchemeHandler):

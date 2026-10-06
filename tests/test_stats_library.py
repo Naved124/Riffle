@@ -59,7 +59,7 @@ def test_library_scan_import_search(tmp_path, samples):
     settings.update({"library": {"folders": [str(folder)], "mainFolder": str(folder)}})
     lib = Library(settings, LibraryState(tmp_path / "lib.json"))
     decks = lib.scan()
-    assert len(decks) == 12
+    assert len(decks) == 13
     by_name = {d.filename: d for d in decks}
     assert by_name["04-aws-fragment.html"].kind == "fragment"
     assert by_name["03-spanish-vocab-react.jsx"].kind == "react"
@@ -75,7 +75,7 @@ def test_library_scan_import_search(tmp_path, samples):
     p1 = lib.import_file("new deck.html", b"<p>Q: a?<br>A: b</p>")
     p2 = lib.import_file("new deck.html", b"<p>different</p>")
     assert p1.name == "new deck.html" and p2.name == "new deck (2).html"
-    assert len(lib.scan()) == 14
+    assert len(lib.scan()) == 15
     # manual card override
     did = by_name["09-pomodoro-no-cards.html"].id
     lib.save_cards(did, [{"front": "Work minutes?", "back": "25"}])

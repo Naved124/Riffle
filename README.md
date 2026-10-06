@@ -41,6 +41,23 @@ themes, quizzes graded by similarity, and progress tracking.
   - CSV / JSON export
 - **Card editor**. If a deck's questions/answers weren't detected perfectly, fix them. Edits are stored separately; deck files are never modified.
 
+**Make your own decks**
+- **Deck editor** (the **Create a deck** button above the deck list, or Ctrl+N): give the deck a title and emoji, then add
+  **flip cards** (front / back) and **multiple-choice** cards with your own options and the correct one marked.
+- Cards can have a **hint**, an **explanation** and a **category**, and use simple formatting: `**bold**`, `*italic*`,
+  `` `code` ``, code blocks, lists, links, **images** (pick, paste or drop them in; they're resized and stored inside the
+  deck) and **maths** written in LaTeX (`$x^2$`, `$$\int_0^1 x\,dx$$`), rendered with KaTeX, which is bundled so it works offline.
+- A **live preview** next to the editor shows the card you're editing as it will look.
+- **Import** cards from CSV / TSV files (Anki and Quizlet text exports work), or paste lines like `term - definition`
+  or `Q: … / A: …`. A header row can name the columns: `front`, `back`, `hint`, `explanation`, `category`, and
+  `option A`–`option H` plus `correct` for multiple choice.
+- The deck is saved as an ordinary `.html` file in your main deck folder (on Android, in the app's library), so
+  quizzes, stats, search and backups all work with it, and it opens in any browser if you share it.
+- Your decks **follow the app's look**: theme colours, light/dark mode, font, corner roundness and reduced motion all
+  carry over, and change with the app.
+- Open one of your decks and press the **edit cards** button (📝) to change it later. For any other deck, the card
+  editor's **Make editable copy** starts a new deck from its cards.
+
 **Material 3 look**
 - Custom M3 title bar, navigation rail, Material Web components and **Material Symbols** icons (outlined / rounded / sharp, fill and weight).
 - Themes:
@@ -59,6 +76,7 @@ themes, quizzes graded by similarity, and progress tracking.
 | ![Stats](docs/screenshots/stats.png) | ![Themes](docs/screenshots/settings-themes.png) |
 | ![Glass dark](docs/screenshots/glass-dark.png) | ![Monokai + AMOLED + Comic Relief](docs/screenshots/monokai-amoled-search.png) |
 | ![Catppuccin Latte](docs/screenshots/catppuccin-latte.png) | ![Card editor](docs/screenshots/card-editor.png) |
+| ![Deck editor](docs/screenshots/deck-editor.png) | |
 
 ## Download
 
@@ -176,12 +194,17 @@ python3 -m flashcard_viewer            # or: python3 -m flashcard_viewer some-de
 
 If the quiz finds no cards in a deck, open it and click the **edit cards** button (📝) to add them.
 
+To write your own deck, click **Create a deck** above the deck list (or press Ctrl+N). In your decks, use ← / → to move,
+Space to flip, H for a hint, S to shuffle, and 1–8 or A–H to pick a multiple-choice answer; on a phone, tap to flip and
+swipe to move.
+
 ### Default shortcuts
 
 | Action | Keys | Action | Keys |
 |---|---|---|---|
 | Search | Ctrl+K | Quiz the open deck | Ctrl+Q |
 | Add decks | Ctrl+O | Fullscreen focus mode | F11 |
+| Create a deck | Ctrl+N | Save (deck editor) | Ctrl+S |
 | Next / previous deck | Ctrl+↓ / Ctrl+↑ | Focus mode (keep window) | Ctrl+Shift+F |
 | Zoom deck | Ctrl+= / Ctrl+- / Ctrl+0 | Reload deck | Ctrl+R |
 | Favourite | Ctrl+D | Show/hide deck list | Ctrl+B |
@@ -192,7 +215,9 @@ All of these can be changed in **Settings → Keyboard shortcuts**, and they wor
 
 ## How it finds questions and answers
 
-AI-made decks have no fixed format, so `flashcard_viewer/extract.py` tries several strategies:
+Decks made with the deck editor keep their cards as JSON in `<script id="fv-deck-data">`, so they're read exactly
+(`flashcard_viewer/customdeck.py`). Other decks are AI-made and have no fixed format, so `flashcard_viewer/extract.py`
+tries several strategies:
 
 - **Script data**: arrays of objects in `<script>` blocks, or anywhere in a `.jsx`/`.tsx` file. A tolerant JavaScript-literal
   parser (`jsparse.py`) handles unquoted keys, all three quote styles, template literals, comments, trailing commas
@@ -203,8 +228,8 @@ AI-made decks have no fixed format, so `flashcard_viewer/extract.py` tries sever
   `<dl>` lists and 2-column tables.
 - **Plain text**: `Q: … / A: …` lines and `term — definition` lists.
 
-`samples/` has 11 decks covering these shapes plus edge cases (BOM/CRLF, unicode filenames, malformed HTML,
-a deck with no cards). See [`samples/README.md`](samples/README.md).
+`samples/` has 13 decks covering these shapes plus edge cases (BOM/CRLF, unicode filenames, malformed HTML,
+a deck with no cards, a deck made with the deck editor). See [`samples/README.md`](samples/README.md).
 
 ## Where things are stored
 
@@ -243,5 +268,5 @@ FLASHCARD_VIEWER_DEBUG=1 python3 -m flashcard_viewer   # prints JS console messa
 ## Licenses
 
 The app code is MIT. The bundled third-party assets keep their own licenses: Material Web, Material Color Utilities
-and Material Symbols are Apache 2.0, the fonts are SIL OFL 1.1, Comic Mono is MIT, and React, lucide and Tailwind are MIT/ISC.
+and Material Symbols are Apache 2.0, the fonts are SIL OFL 1.1, Comic Mono is MIT, and React, lucide, Tailwind and KaTeX are MIT/ISC.
 See `flashcard_viewer/ui/vendor/THIRD_PARTY_NOTICES.txt`.

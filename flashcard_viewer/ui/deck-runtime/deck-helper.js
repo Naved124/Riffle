@@ -9,12 +9,13 @@
   // Where vendor assets live: /__fv/vendor/ (desktop) or ../vendor/ next to deck-runtime/ (Android / web).
   const selfSrc = (document.currentScript && document.currentScript.src) || '/__fv/deck-helper.js';
   const VENDOR = /\/deck-runtime\//.test(selfSrc) ? new URL('../vendor/', selfSrc).href : new URL('vendor/', selfSrc).href;
+  window.__fvVendor = VENDOR; // decks made with the deck editor load KaTeX from here
 
   const send = (type, data) => {
     try { window.parent.postMessage(Object.assign({ fv: type }, data || {}), '*'); } catch (_) { /* ignore */ }
   };
 
-  let config = { font: '', mono: '', theme: 'off', zoom: 1, shortcuts: [], appMode: 'light' };
+  let config = { font: '', mono: '', theme: 'off', zoom: 1, shortcuts: [], appMode: 'light', appTheme: null, reduceMotion: false };
 
   // ---- keyboard shortcuts: forward app combos, leave the rest to the deck ----
   const comboOf = (e) => {
@@ -133,6 +134,25 @@
     }
     return false;
   };
+  const loadFonts = () => {
+    if (document.getElementById('__fv-fonts')) return;
+    const link = document.createElement('link');
+    link.id = '__fv-fonts'; link.rel = 'stylesheet'; link.href = VENDOR + 'fonts.css';
+    (document.head || document.documentElement).appendChild(link);
+  };
+  // Decks made with the deck editor style themselves from --fv-* variables: give them the app's
+  // colours, fonts and shape instead of overriding fonts or inverting colours.
+  const appThemed = () => !!document.querySelector('meta[name="fv-theme"][content="app"]');
+  const applyAppTheme = () => {
+    const root = document.documentElement;
+    const t = config.appTheme || {};
+    for (const [k, v] of Object.entries(t.vars || {})) {
+      if (/^--fv-[a-z-]+$/.test(k)) root.style.setProperty(k, String(v));
+    }
+    root.setAttribute('data-fv-mode', t.dark ? 'dark' : 'light');
+    root.toggleAttribute('data-fv-reduce-motion', !!config.reduceMotion);
+    loadFonts();
+  };
   const applyConfig = () => {
     let el = document.getElementById(STYLE_ID);
     if (!el) {
@@ -141,17 +161,15 @@
       (document.head || document.documentElement).appendChild(el);
     }
     let css = '';
-    if (config.font) {
-      if (!document.getElementById('__fv-fonts')) {
-        const link = document.createElement('link');
-        link.id = '__fv-fonts'; link.rel = 'stylesheet'; link.href = VENDOR + 'fonts.css';
-        (document.head || document.documentElement).appendChild(link);
-      }
+    if (appThemed()) {
+      applyAppTheme();
+    } else if (config.font) {
+      loadFonts();
       css += `body, body :not(code):not(pre):not(kbd):not(samp):not(.katex):not(.katex *):not([class*="icon"]):not([class*="material"]):not(svg):not(svg *) { font-family: "${config.font}", system-ui, sans-serif !important; }\n`;
       if (config.mono) css += `code, pre, kbd, samp, .font-mono { font-family: "${config.mono}", ui-monospace, monospace !important; }\n`;
     }
-    let invert = config.theme === 'invert';
-    if (config.theme === 'auto') invert = deckIsDark() !== (config.appMode === 'dark');
+    let invert = config.theme === 'invert' && !appThemed();
+    if (config.theme === 'auto' && !appThemed()) invert = deckIsDark() !== (config.appMode === 'dark');
     if (invert) {
       css += `html { filter: invert(0.9) hue-rotate(180deg) !important; background: #fff; }\n` +
         `img, video, picture, canvas, iframe, [style*="background-image"] { filter: invert(1) hue-rotate(180deg) !important; }\n`;
