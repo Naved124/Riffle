@@ -59,5 +59,7 @@ Riffle is free to download and use, but it is not open source. © 2026 Naved124,
 modify or redistribute it. See [LICENSE](LICENSE). Bug reports and ideas are welcome in
 [Issues](https://github.com/Naved124/Riffle/issues).
 
+Riffle collects no personal data; see the [privacy policy](PRIVACY.md).
+
 Bundled third-party components keep their own licenses
 (see `flashcard_viewer/ui/vendor/THIRD_PARTY_NOTICES.txt`).
