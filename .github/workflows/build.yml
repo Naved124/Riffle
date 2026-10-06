@@ -118,9 +118,9 @@ jobs:
           name: release-windows
           path: dist/Riffle-Setup-*.exe
           if-no-files-found: error
-      # Microsoft Store package. The identity values come from Partner Center (Product identity page),
-      # saved as repository variables; without them the package uses placeholders and can't be submitted.
-      # It isn't signed: the Store signs it on submission. Not attached to the GitHub release.
+      # Microsoft Store package, with Riffle's Store identity (defaults in make-msix.ps1; the MSIX_*
+      # repository variables can override them). It isn't signed: the Store signs it on submission.
+      # Not attached to the GitHub release.
       - name: Build Microsoft Store package (MSIX)
         shell: pwsh
         env:
@@ -132,7 +132,6 @@ jobs:
           if ($env:MSIX_IDENTITY_NAME) { $a.IdentityName = $env:MSIX_IDENTITY_NAME }
           if ($env:MSIX_PUBLISHER) { $a.Publisher = $env:MSIX_PUBLISHER }
           if ($env:MSIX_PUBLISHER_DISPLAY_NAME) { $a.PublisherDisplayName = $env:MSIX_PUBLISHER_DISPLAY_NAME }
-          if (-not $env:MSIX_IDENTITY_NAME) { Write-Host "::warning title=MSIX identity not set::Set the MSIX_IDENTITY_NAME, MSIX_PUBLISHER and MSIX_PUBLISHER_DISPLAY_NAME repository variables from Partner Center to get a package you can submit." }
           & packaging\windows\make-msix.ps1 @a
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:

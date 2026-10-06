@@ -1,14 +1,14 @@
 # Build the Microsoft Store package (MSIX) from the PyInstaller output in dist\FlashcardViewer.
 #
-#   pwsh packaging/windows/make-msix.ps1 -IdentityName "12345Naved124.Riffle" `
-#        -Publisher "CN=XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX" -PublisherDisplayName "Naved124"
+#   pwsh packaging/windows/make-msix.ps1
 #
-# The three identity values are on Partner Center's "Product identity" page for the app. The package is
-# not signed: the Store signs it when you submit it. Needs the Windows SDK (makeappx, makepri).
+# The identity defaults are Riffle's values from Partner Center's "Product identity" page (Store ID
+# 9NS2LGV72W04); they are public, as every Store package carries them. The package is not signed: the
+# Store signs it when you submit it. Needs the Windows SDK (makeappx, makepri).
 param(
-  [string]$IdentityName = "Riffle.Local",
-  [string]$Publisher = "CN=Riffle",
-  [string]$PublisherDisplayName = "Naved124",
+  [string]$IdentityName = "MDNaved.Riffle",
+  [string]$Publisher = "CN=45CC6AEF-530C-43D1-8EB2-D8BF0E956BAC",
+  [string]$PublisherDisplayName = "MD Naved",
   [string]$Out = "dist"
 )
 $ErrorActionPreference = "Stop"
