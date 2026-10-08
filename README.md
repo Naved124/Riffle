@@ -5,6 +5,8 @@
 A flashcard app for **Windows, Android and Linux**. Study HTML and React flashcard decks (such as ones made by AI
 assistants) without a browser, quiz yourself on them, track your progress, or make your own decks.
 
+<a href="https://apps.microsoft.com/detail/9NS2LGV72W04"><img src="https://get.microsoft.com/images/en-us%20dark.svg" alt="Get it from Microsoft" width="200"></a>
+
 ![Riffle](docs/screenshots/riffle.png)
 
 ## Features
@@ -26,7 +28,7 @@ Get the latest version from the [releases page](https://github.com/Naved124/Riff
 
 | Platform | File |
 |---|---|
-| Windows 10/11 | `Riffle-Setup-<version>.exe`. If SmartScreen warns, choose **More info → Run anyway**. |
+| Windows 10/11 | [Microsoft Store](https://apps.microsoft.com/detail/9NS2LGV72W04) (easiest, updates automatically), or `Riffle-Setup-<version>.exe`. If SmartScreen warns, choose **More info → Run anyway**. |
 | Android 8.0+ | `Riffle-<version>.apk`. Allow "Install unknown apps" for your browser or file manager. |
 | Linux | Install from source (below). |
 
