@@ -45,7 +45,7 @@ jobs:
           pip install --no-deps dist/*.whl
           python -c "import flashcard_viewer, pathlib; p = pathlib.Path(flashcard_viewer.__file__).parent; assert (p / 'ui/index.html').exists() and (p / 'ui/vendor/material.js').exists()"
           ls -la dist
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-linux
           path: dist/*.whl
@@ -113,7 +113,7 @@ jobs:
           & $signtool sign /f $pfx /p $env:WIN_PFX_PASSWORD /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 $files
           if ($LASTEXITCODE -ne 0) { throw "signtool failed" }
           Remove-Item $pfx
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-windows
           path: dist/Riffle-Setup-*.exe
@@ -133,7 +133,7 @@ jobs:
           if ($env:MSIX_PUBLISHER) { $a.Publisher = $env:MSIX_PUBLISHER }
           if ($env:MSIX_PUBLISHER_DISPLAY_NAME) { $a.PublisherDisplayName = $env:MSIX_PUBLISHER_DISPLAY_NAME }
           & packaging\windows\make-msix.ps1 @a
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: microsoft-store-msix
           path: dist/Riffle-*.msix
@@ -177,7 +177,7 @@ jobs:
           mkdir -p dist
           cp android/app/build/outputs/apk/release/app-release.apk "dist/Riffle-$ver.apk"
           ls -la dist
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: env.HAS_ANDROID_KEY == 'true'
         with:
           name: release-android
@@ -190,7 +190,7 @@ jobs:
         run: |
           echo "::warning title=Android signing key missing::Run tools/make-release-keys.sh and add the repository secrets it lists. This release will have no APK."
           gradle -p android assembleDebug --no-daemon --stacktrace
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: env.HAS_ANDROID_KEY != 'true'
         with:
           name: debug-android
